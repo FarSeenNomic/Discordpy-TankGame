@@ -1,0 +1,5 @@
+__pycache__
+saves/*.JSON
+maps/*.png
+dynamic_images/*.png
+dynamic_images/animated/
