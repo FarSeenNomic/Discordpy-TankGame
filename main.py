@@ -260,26 +260,28 @@ ADDITIONAL NOTES
                     g_args = {}
                     if "-s" in message.content:
                         g_args["skip_on_0"] = True
-                    time_regex = re.search(r'\b(\d+)(h|m|s|H|M|S)', message.content)
+
+                    time_regex = re.search(r' (\d+)(h|m|s|H|M|S)', message.content)
                     if time_regex:
-                        leng = int(time_regex.group(1))
-                        time = {"h":"hours", "m":"minutes", "s":"seconds"}[time_regex.group(2).lower()]
-                        g_args["time_gap"] = timedelta(**{time: leng})
+                        leng1 = int(time_regex.group(1))
+                        time1 = {"h":"hours", "m":"minutes", "s":"seconds"}[time_regex.group(2).lower()]
+                        g_args["time_gap"] = timedelta(**{time1: leng1})
                     
-                    time_regex2 = re.search(r'\b-(\d+)(h|m|s|H|M|S)', message.content)
-                    if time_regex:
-                        leng = int(time_regex2.group(1))
-                        time = {"h":"hours", "m":"minutes", "s":"seconds"}[time_regex2.group(2).lower()]
-                        g_args["time_delta"] = timedelta(**{time: leng})
+                    time_regex2 = re.search(r' -(\d+)(h|m|s|H|M|S)', message.content)
+                    if time_regex2:
+                        leng2 = int(time_regex2.group(1))
+                        time2 = {"h":"hours", "m":"minutes", "s":"seconds"}[time_regex2.group(2).lower()]
+                        g_args["time_delta"] = timedelta(**{time2: leng2})
                     
                     games[message.channel.id] = tank.tank_game(message.author.id, **g_args)
 
                     # and also join the user to the created game
-                    await message.channel.send(games[message.channel.id].insert_player(message.author.id))
+                    games[message.channel.id].insert_player(message.author.id)
                     await get_user_image(message.author)
 
                     games[message.channel.id].save_state_to_file("saves/{}.JSON".format(message.channel.id))
 
+                    await message.channel.send("Created a game with rounds every {} {}, random offset of {} {}, and auto-skip turned {}.".format(leng1, time1, leng2, time2, "on" if g_args["skip_on_0"] else "off"))
                     return
 
             if message.channel.id not in games:
