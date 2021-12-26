@@ -238,16 +238,18 @@ ADDITIONAL NOTES
             await message.channel.send("Can't DM!")
         return
 
-    elif args[0][0] == '.' and message.channel.id not in games:
-        #try loading the game from file if it already exists
-        try:
-            game = tank.tank_game()
-            game.load_state_from_file("saves/{}.JSON".format(message.channel.id))
-            games[message.channel.id] = game
-        except FileNotFoundError:
-            pass
+    #if it's a command, continue.
+    #commands can't start with .., so "..." won't be counted as a valid command by accident.
+    if args[0].startswith(".") and not args[0].startswith(".."):
+        if message.channel.id not in games:
+            #try loading the game from file if it already exists
+            try:
+                game = tank.tank_game()
+                game.load_state_from_file("saves/{}.JSON".format(message.channel.id))
+                games[message.channel.id] = game
+            except FileNotFoundError:
+                pass
 
-    if args[0][0] == '.':
         try:
             if args[0].casefold() == ".create":
                 if message.channel.id in games:
