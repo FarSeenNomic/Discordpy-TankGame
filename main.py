@@ -49,6 +49,8 @@ async def day_loop():
                         await asyncio.sleep(timedeltas[index] - timedeltas[index-1])
     
                     member = client.get_user(playerid)
+                    if not member:# if player has left the game
+                        continue
                     if member.dm_channel is None:
                         await member.create_dm()
     
@@ -87,10 +89,11 @@ async def on_ready():
     if loop:
         loop = False
         for fn in listdir("./saves"):
-            print("loaded", fn)
-            game = tank.tank_game()
-            game.load_state_from_file("saves/{}".format(fn))
-            games[int(fn[:-5])] = game
+            if fn.endswith(".JSON"):
+                print("loaded", fn)
+                game = tank.tank_game()
+                game.load_state_from_file("saves/{}".format(fn))
+                games[int(fn[:-5])] = game
 
         print("ready.")
         while True:
@@ -172,7 +175,7 @@ gives HP to a player in range
 If you are dead, mark a player for not getting AP
 
 .heal
-For 3 AP, jeals you
+For 3 AP, heals you
 
 .upgrade
 For 3 AP, grows your range
