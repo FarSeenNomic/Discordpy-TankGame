@@ -30,12 +30,14 @@ async def day_loop():
     """
     global games
     while True:
-        await asyncio.sleep(10)
-        for channelID, game in games.items():
+        await asyncio.sleep(10) #don't check faster than every 10 seconds
+
+        for channelID, game in games.items(): # Error: fix because throws "dictionary changed size during iteration" error
+                                              # I think it just kills the for loop, but it's all in a while loop anyway.
             if game.test_hourly_AP():
                 channel = client.get_channel(channelID)
                 if not channel:
-                    print("BAD: ", channelID)
+                    print("BAD: ", channelID) #I think this only comes up if the channel is deleted but somehow not the game?
                     continue
                 hp = game.haunted_player()
     
@@ -108,7 +110,8 @@ board_size = 64
 
 async def get_user_image(user):
     url = user.avatar_url_as(format="png", static_format='png')
-    await url.save("dynamic_images/{}.png".format(user.id, board_size))
+    #await url.save("dynamic_images/{}.png".format(user.id, board_size))
+    await url.save("dynamic_images/{}.png".format(user.id))
 
 async def load_and_send_board(message, game, content=None):
     game.display("maps/{}.png".format(message.channel.id), box_size=board_size, thickness=2)
@@ -194,7 +197,7 @@ view the board
 
 .DELETE
 Case sensitive
-Stops and removed the current game running. Can only be used by the person who start it or a server admin.
+Stops and removes the current game running. Can only be used by the person who started it or a server admin.
 There is no warning.
 ```""")
         return
@@ -263,12 +266,17 @@ ADDITIONAL NOTES
                     if "-s" in message.content:
                         g_args["skip_on_0"] = True
 
+
+                    leng1 = 0
+                    time1 = "s"
                     time_regex = re.search(r' (\d+)(h|m|s|H|M|S)', message.content)
                     if time_regex:
                         leng1 = int(time_regex.group(1))
                         time1 = {"h":"hours", "m":"minutes", "s":"seconds"}[time_regex.group(2).lower()]
                         g_args["time_gap"] = timedelta(**{time1: leng1})
                     
+                    leng2 = 0
+                    time2 = "s"
                     time_regex2 = re.search(r' -(\d+)(h|m|s|H|M|S)', message.content)
                     if time_regex2:
                         leng2 = int(time_regex2.group(1))
@@ -283,7 +291,7 @@ ADDITIONAL NOTES
 
                     games[message.channel.id].save_state_to_file("saves/{}.JSON".format(message.channel.id))
 
-                    await message.channel.send("Created a game with rounds every {} {}, random offset of {} {}, and auto-skip turned {}.".format(leng1, time1, leng2, time2, "on" if g_args["skip_on_0"] else "off"))
+                    await message.channel.send("Created a game with rounds every {} {}, random offset of {} {}, and auto-skip turned {}.".format(leng1, time1, leng2, time2, "on" if g_args.get("skip_on_0", False) else "off"))
                     return
 
             if message.channel.id not in games:
@@ -410,4 +418,5 @@ ADDITIONAL NOTES
         except discord.errors.Forbidden as e:
             await message.channel.send("Error: Not enough permissions")
 
+#points to a file containing only the bot token.
 client.run(open("../Discord/TOKENTANK", "r").read().rstrip())
