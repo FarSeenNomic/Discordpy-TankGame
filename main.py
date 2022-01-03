@@ -3,9 +3,12 @@ from os import listdir
 from os import remove as delete_file
 import asyncio
 import re
-import discord
-import tank
 import random
+
+import discord  #pip install discord.py
+                #which has been depricated with no replacement as of now...
+                #this makes me sad.
+import tank
 
 me_st = discord.Game("battles! ⚔")
 intents = discord.Intents.default()
@@ -44,7 +47,7 @@ async def day_loop():
                 timedeltas = sorted([random.random() * game.time_delta.total_seconds() for _ in game.get_all_players()])
                 print("time", datetime.now(), channelID, timedeltas)
 
-                for index, playerid in enumerate(random.sample( game.get_all_players(), len(game.players) )):
+                for index, playerid in enumerate(random.sample(game.get_all_players(), len(game.players))):
                     if index == 0:
                         await asyncio.sleep(timedeltas[index])
                     else:
@@ -106,6 +109,7 @@ async def on_ready():
                 # Ignore and continue chugging.
                 print(e)
 
+#The width in pixels of any user's image
 board_size = 64
 
 async def get_user_image(user):

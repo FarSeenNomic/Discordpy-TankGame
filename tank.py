@@ -3,7 +3,8 @@ import datetime
 import json
 import math
 import random
-from PIL import Image
+
+from PIL import Image   #pip install pillow
 
 state_pregame = 0
 state_game = 1
@@ -49,8 +50,10 @@ def playercount_to_size(pc):
     y = math.ceil(math.sqrt(15 * pc) / magic)
 
     if y > 26:  #height is limited by the alphabet
-        y = 26  #
+        y = 26
         x = 15 * pc / 26
+
+    #width should also be limited by the 26, as that's all the assets I made.
 
     return [x, y]
 
@@ -509,7 +512,8 @@ class tank_game():
                 subimg = Image.open("static_images/side/{}x{}.png".format(i, box_size), 'r')
             except FileNotFoundError:
                 subimg = Image.open("D:/Documents/python/tank/static_images/5px.png", 'r')
-            img.paste(subimg, (0, box_size_o*i+thickness-1))
+            #img.paste(subimg, (0, box_size_o*i+thickness-1))
+            img.paste(subimg, (0, box_size_o*i+thickness))
 
         #preload the heart, as to not be loading it 30+ times
         heart = Image.open("./static_images/heart.png", 'r')
