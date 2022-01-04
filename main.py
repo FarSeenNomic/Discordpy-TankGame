@@ -359,7 +359,17 @@ ADDITIONAL NOTES
                 await message.channel.send(game.skip_turn(message.author.id))
 
             elif args[0].casefold() == ".list":
-                namer = lambda p: (message.guild.get_member(p) or message.guild.get_member(809942527724486727)).display_name.replace("@", "@.")
+                def namer(p):
+                    """
+                    Takes a member p and returns a string of their display name, if it exists.
+                    Else return something.
+                    """
+                    #return (message.guild.get_member(p) or message.guild.get_member(809942527724486727)).display_name.replace("@", "@.")
+                    if message.guild.get_member(p):
+                        return message.guild.get_member(p).display_name.replace("@", "@.")
+                    else:
+                        return "{} (<@{}>)".format(p, p)
+
                 plist = [namer(p) + (" (haunting {})".format(namer(v["haunting"])) if v["haunting"] else "") for p,v in game.players.items()]
                 pre = "{} players in game:\n".format(len(plist))
                 await message.channel.send(pre + "\n".join(plist))
