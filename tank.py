@@ -473,7 +473,7 @@ class tank_game():
     def get_all_players(self):
         return list(self.players.keys())
 
-    def display(self, fname="maps/out.png", *, box_size=32, thickness=1):
+    def display(self, fname="./maps/out.png", *, box_size=32, thickness=1):
         """
         Sends a grid of players to the channel.
         """
@@ -500,20 +500,14 @@ class tank_game():
 
         #name the top row
         for i in range(1, board_w):
-            try:
-                subimg = Image.open("static_images/top/{}x{}.png".format(i, box_size), 'r')
-            except FileNotFoundError:
-                subimg = Image.open("D:/Documents/python/tank/static_images/5px.png", 'r')
+            subimg = Image.open("./static_images/top/{}x{}.png".format(i, box_size), 'r')
             img.paste(subimg, (box_size_o*i+thickness-1, 0))
 
         #name the left coloum
         for i in range(1, board_h):
-            try:
-                subimg = Image.open("static_images/side/{}x{}.png".format(i, box_size), 'r')
-            except FileNotFoundError:
-                subimg = Image.open("D:/Documents/python/tank/static_images/5px.png", 'r')
+            subimg = Image.open("./static_images/side/{}x{}.png".format(i, box_size), 'r')
             #img.paste(subimg, (0, box_size_o*i+thickness-1))
-            img.paste(subimg, (0, box_size_o*i+thickness))
+            img.paste(subimg, (0, box_size_o*i+thickness-2))
 
         #preload the heart, as to not be loading it 30+ times
         heart = Image.open("./static_images/heart.png", 'r')
@@ -521,16 +515,7 @@ class tank_game():
 
         #put players on the board
         for p,v in self.players.items():
-            #player_img = Image.open("dynamic_images/{}x{}.png".format(p, box_size), 'r')
-
-            #multiple = max(box_size // max(player_img.height, player_img.width), 1)
-            #print("multiple: ", multiple, player_img.height, player_img.width)
-            #player_img = player_img.resize( (multiple*player_img.height, multiple*player_img.width), Image.NEAREST)
-
-            try:
-                player_img = Image.open("dynamic_images/{}.png".format(p), 'r')
-            except:
-                player_img = Image.open("dynamic_images/{}x64.png".format(p), 'r')
+            player_img = Image.open("./dynamic_images/{}.png".format(p), 'r')
 
             if player_img.width > box_size:
                 #assume height==width, or have pain.
@@ -547,6 +532,7 @@ class tank_game():
                 img.paste(player_img, (p1,p2))
 
             #Also display health
+            #Displays in a straight line.
             hp = v["HP"]
             for i in range(1,hp+1):
                 img.paste(heart, (
@@ -554,6 +540,7 @@ class tank_game():
                     int(p2+box_size*4/5-width/2)
                     ), mask=heart)
 
+        #place hearts around map.
         for x,y in self.hearts:
             img.paste(heart, (
                 int((x+1)*box_size_o + box_size/2 - width/2),
