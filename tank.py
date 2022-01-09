@@ -24,8 +24,11 @@ class PlayerNotInGame(Exception):
 class GameJoinError(Exception):
     pass
 
-#https://stackoverflow.com/questions/43864101/python-pil-check-if-image-is-transparent
 def has_transparency(img):
+    """
+    returns true if image is transparent.
+    https://stackoverflow.com/questions/43864101/python-pil-check-if-image-is-transparent
+    """
     if img.mode == "P":
         transparent = img.info.get("transparency", -1)
         for _, index in img.getcolors():
@@ -198,7 +201,7 @@ class tank_game():
 
     def selector_in_game(self, who_id, first_person=True):
         """
-        Selector
+        Selector to test only for target in the game
         """
         if who_id not in self.players:
             if first_person:
@@ -208,7 +211,7 @@ class tank_game():
 
     def selector_alive(self, who_id, first_person=True):
         """
-        Selector
+        Selectorto test only for target is alive
         """
         if self.players[who_id]["HP"] == 0:
             if first_person:
@@ -218,21 +221,21 @@ class tank_game():
 
     def selector_minimum_AP(self, who_id, ap):
         """
-        Selector
+        Selector to test only for target has some minimum AP
         """
         if self.players[who_id]["AP"] < ap:
             raise NotEnoughAP("You don't have enough AP!")
 
     def selector_range(self, who_id, target):
         """
-        Selector
+        Selector to test only for target in in range
         """
         if distance(self.players[who_id], self.players[target]) > self.players[who_id]['range']:
             raise NotInRange("Target is not in range!")
 
     def selector_not_self(self, who_id, target):
         """
-        Selector
+        Selector to test only for target not targeting themself.
         """
         if who_id == target:
             raise NotEnoughHealth("You can't target yourself!")
@@ -287,6 +290,37 @@ class tank_game():
             if p["HP"] >= 1:
                 alive_count += 1
         return alive_count >= 2
+
+    def who_is(self, xy):
+        """
+        Takes an XY string (F8, A13) and returns the player who is there, else None
+        """
+
+        test_y = ord(xy[0].upper()) - ord('A')
+
+        try:
+            test_x = int(xy[1:]) - 1
+
+        except ValueError:
+            raise UnknownCommand("Y position must be a positive integer")
+
+        if not 0 <= test_x < self.board_size[0]:
+            raise UnknownCommand("X position must be on the board")
+        if not 0 <= test_y < self.board_size[1]:
+            raise UnknownCommand("Y position must be on the board")
+
+        for p,v in self.players.items():
+            if v["X"] == test_x and v["Y"] == test_y:
+                return p
+        return None
+
+    def where_is(self, who_id):
+        """
+        Takes an player, and returns their position
+        """
+        self.selector_in_game(who_id)
+        p = self.players[who_id]
+        return chr(p["Y"]+ord('A')) + str(p["X"]+1)
 
     def move(self, who_id, direction):
         self.selector_in_game(who_id)

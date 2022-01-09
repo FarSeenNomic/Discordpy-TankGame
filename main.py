@@ -10,6 +10,12 @@ import discord  #pip install discord.py
                 #this makes me sad.
 import tank
 
+"""
+Todo:
+Make haunting have setting for giving hearts instead of negating them.
+Make setting for threshold haunts instead of most haunts
+"""
+
 me_st = discord.Game("battles! ⚔")
 intents = discord.Intents.default()
 intents.members = True
@@ -129,6 +135,20 @@ async def on_guild_channel_delete(channel):
     except KeyError:
         pass
 
+def namer(message, p):
+    """
+    Takes a member.id p and returns a string of their display name, if it exists.
+    Else return something.
+    """
+    #return (message.guild.get_member(p) or message.guild.get_member(809942527724486727)).display_name.replace("@", "@.")
+    if not p:
+        # if p is None or otherwise false-y, it should not be stringified
+        return "Nobody"
+    elif message.guild.get_member(p):
+        return message.guild.get_member(p).display_name.replace("@", "@.")
+    else:
+        return "{} (<@{}>)".format(p, p)
+
 @client.event
 async def on_message(message):
     if message.author.bot:
@@ -163,22 +183,22 @@ Joins a game before it starts.
 
 Game actions:
 
-.move Direction
+.move direction
 Moves in one of the 8 cardinal directions.
 > N | S | E | W | NW | NE | SW | SE
 > U | D | L | R | UL | UR | DL | DR
 > numpad direction
 
-.attack @player
+.attack <@player>
 attacks a player in range
 
-.giveap @player
+.giveap <@player>
 gives AP to a player in range
 
-.givehp @player
+.givehp <@player>
 gives HP to a player in range
 
-.haunt @player
+.haunt <@player>
 If you are dead, mark a player for not getting AP
 
 .heal
@@ -195,6 +215,12 @@ If skip mode is enabled, marks you for skipping your turn if you still have AP.
 
 .list
 list players currently in the game
+
+.whois <position>
+Returns the player at the position 'position'
+
+.whereis <@player>
+Returns the player at the position 'position'
 
 .board
 view the board
@@ -293,7 +319,7 @@ ADDITIONAL NOTES
                     games[message.channel.id].insert_player(message.author.id)
                     await get_user_image(message.author)
 
-                    games[message.channel.id].save_state_to_file("saves/{}.JSON".format(message.channel.id))
+                    games[message.channel.id].save_state_to_file("./saves/{}.JSON".format(message.channel.id))
 
                     await message.channel.send("Created a game with rounds every {} {}, random offset of {} {}, and auto-skip turned {}.".format(leng1, time1, leng2, time2, "on" if g_args.get("skip_on_0", False) else "off"))
                     return
@@ -319,6 +345,18 @@ ADDITIONAL NOTES
                     await message.channel.send(game.move(message.author.id, args[1]))
                 else:
                     await message.channel.send(".move <direction>")
+
+            elif args[0].casefold() == ".whois":
+                if len(args) == 2:
+                    await message.channel.send(namer(message, game.who_is(args[1])))
+                else:
+                    await message.channel.send(".whois <position F4>")
+
+            elif args[0].casefold() == ".whereis":
+                if len(args) == 2:
+                    await message.channel.send(game.where_is(mention_to_id(args[1])))
+                else:
+                    await message.channel.send(".whereis <@player>")
 
             elif args[0].casefold() == ".attack":
                 if len(args) == 2:
@@ -359,18 +397,7 @@ ADDITIONAL NOTES
                 await message.channel.send(game.skip_turn(message.author.id))
 
             elif args[0].casefold() == ".list":
-                def namer(p):
-                    """
-                    Takes a member p and returns a string of their display name, if it exists.
-                    Else return something.
-                    """
-                    #return (message.guild.get_member(p) or message.guild.get_member(809942527724486727)).display_name.replace("@", "@.")
-                    if message.guild.get_member(p):
-                        return message.guild.get_member(p).display_name.replace("@", "@.")
-                    else:
-                        return "{} (<@{}>)".format(p, p)
-
-                plist = [namer(p) + (" (haunting {})".format(namer(v["haunting"])) if v["haunting"] else "") for p,v in game.players.items()]
+                plist = [namer(message, p) + (" (haunting {})".format(namer(message, v["haunting"])) if v["haunting"] else "") for p,v in game.players.items()]
                 pre = "{} players in game:\n".format(len(plist))
                 await message.channel.send(pre + "\n".join(plist))
 
