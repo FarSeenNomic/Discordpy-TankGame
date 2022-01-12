@@ -296,10 +296,10 @@ class tank_game():
         Takes an XY string (F8, A13) and returns the player who is there, else None
         """
 
-        test_y = ord(xy[0].upper()) - ord('A')
+        test_x = ord(xy[0].upper()) - ord('A')
 
         try:
-            test_x = int(xy[1:]) - 1
+            test_y = int(xy[1:]) - 1
 
         except ValueError:
             raise UnknownCommand("Y position must be a positive integer")
@@ -320,7 +320,7 @@ class tank_game():
         """
         self.selector_in_game(who_id)
         p = self.players[who_id]
-        return chr(p["Y"]+ord('A')) + str(p["X"]+1)
+        return chr(p["X"]+ord('A')) + str(p["Y"]+1)
 
     def move(self, who_id, direction):
         self.selector_in_game(who_id)
@@ -447,13 +447,13 @@ class tank_game():
         haunting_counts = Counter([v["haunting"] for v in self.players.values() if v["HP"] == 0])
         haunted_players = haunting_counts.most_common(2)
         if len(haunted_players) == 0:
-            return False
+            return None
 
         if len(haunted_players) == 1:
             return haunted_players[0][0]
 
-        if haunted_players[0][0] == haunted_players[1][0]:
-            return False
+        if haunted_players[0][1] == haunted_players[1][1]:
+            return None
 
         return haunted_players[0][0]
 
