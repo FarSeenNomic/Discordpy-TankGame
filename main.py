@@ -14,6 +14,12 @@ import tank
 Todo:
 Make haunting have setting for giving hearts instead of negating them.
 Make setting for threshold haunts instead of most haunts
+
+Haunting "ties" don't calcuate correctly
+
+-q queue style normal / tetris
+-r default radius
+-d density
 """
 
 me_st = discord.Game("battles! ⚔")
@@ -51,7 +57,7 @@ async def day_loop():
                 hp = game.haunted_player()
     
                 timedeltas = sorted([random.random() * game.time_delta.total_seconds() for _ in game.get_all_players()])
-                print("time", datetime.now(), channelID, timedeltas)
+                print("time", datetime.now(), channelID, timedeltas, hp)
 
                 for index, playerid in enumerate(random.sample(game.get_all_players(), len(game.players))):
                     if index == 0:
@@ -396,9 +402,12 @@ ADDITIONAL NOTES
                 await message.channel.send(game.skip_turn(message.author.id))
 
             elif args[0].casefold() == ".list":
-                plist = [namer(message, p) + (" (haunting {})".format(namer(message, v["haunting"])) if v["haunting"] else "") for p,v in game.players.items()]
+                #ERROR: 2K character limit
+                plist = [namer(message, p) + (" (haunting {})".format(namer(message, v["haunting"])) if v["HP"] == 0 and v["haunting"] else "") for p,v in game.players.items()]
                 pre = "{} players in game:\n".format(len(plist))
-                await message.channel.send(pre + "\n".join(plist))
+                hp = game.haunted_player()
+                post = ("\n\nHaunted player: " + (namer(message, hp) or "Tied!")) if any(v["HP"] == 0 for v in game.players.values()) else ""
+                await message.channel.send(pre + "\n".join(plist) + post)
 
             elif args[0].casefold() == ".info":
                 if message.author.dm_channel is None:
