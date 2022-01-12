@@ -103,7 +103,7 @@ async def on_ready():
             if fn.endswith(".JSON"):
                 print("loaded", fn)
                 game = tank.tank_game()
-                game.load_state_from_file("saves/{}".format(fn))
+                game.load_state_from_file("./saves/{}".format(fn))
                 games[int(fn[:-5])] = game
 
         print("ready.")
@@ -120,18 +120,17 @@ board_size = 64
 
 async def get_user_image(user):
     url = user.avatar_url_as(format="png", static_format='png')
-    #await url.save("dynamic_images/{}.png".format(user.id, board_size))
-    await url.save("dynamic_images/{}.png".format(user.id))
+    await url.save("./dynamic_images/{}.png".format(user.id))
 
 async def load_and_send_board(message, game, content=None):
-    game.display("maps/{}.png".format(message.channel.id), box_size=board_size, thickness=2)
-    await message.channel.send(content, file=discord.File("maps/{}.png".format(message.channel.id)))
+    game.display("./maps/{}.png".format(message.channel.id), box_size=board_size, thickness=2)
+    await message.channel.send(content, file=discord.File("./maps/{}.png".format(message.channel.id)))
 
 @client.event
 async def on_guild_channel_delete(channel):
     try:
         games.pop(channel.id)
-        delete_file("saves/{}.JSON".format(channel.id))
+        delete_file("./saves/{}.JSON".format(channel.id))
     except KeyError:
         pass
 
@@ -278,7 +277,7 @@ ADDITIONAL NOTES
             #try loading the game from file if it already exists
             try:
                 game = tank.tank_game()
-                game.load_state_from_file("saves/{}.JSON".format(message.channel.id))
+                game.load_state_from_file("./saves/{}.JSON".format(message.channel.id))
                 games[message.channel.id] = game
             except FileNotFoundError:
                 pass
@@ -417,7 +416,7 @@ ADDITIONAL NOTES
             elif args[0] == ".DELETE":
                 if game.owner == message.author.id or message.author.guild_permissions.administrator:
                     games.pop(message.channel.id)
-                    delete_file("saves/{}.JSON".format(message.channel.id))
+                    delete_file("./saves/{}.JSON".format(message.channel.id))
                     await message.channel.send("Game has been deleted successfully.")
                 else:
                     await message.channel.send("Not game owner.")
@@ -428,7 +427,7 @@ ADDITIONAL NOTES
                     if game.players[p]["HP"] >= 1:
                         await message.channel.send("The game is over! <@{}> is the winner!".format(p))
                         break
-                delete_file("saves/{}.JSON".format(message.channel.id))
+                delete_file("./saves/{}.JSON".format(message.channel.id))
                 games.pop(message.channel.id)
             else:
                 if game.test_all_ready_ap():
@@ -438,7 +437,7 @@ ADDITIONAL NOTES
                             await member.create_dm()
                         await member.dm_channel.send("Gained 1 AP in <#{}>".format(message.channel.id))
 
-                game.save_state_to_file("saves/{}.JSON".format(message.channel.id))
+                game.save_state_to_file("./saves/{}.JSON".format(message.channel.id))
 
         except tank.NotEnoughHealth as e:
             await message.channel.send(str(e) or "Unknown Error :(")
