@@ -4,6 +4,7 @@ from os import remove as delete_file
 import asyncio
 import re
 import random
+import functools
 
 import discord  #pip install discord.py
                 #which has been depricated with no replacement as of now...
@@ -15,11 +16,8 @@ Todo:
 Make haunting have setting for giving hearts instead of negating them.
 Make setting for threshold haunts instead of most haunts
 
-Haunting "ties" don't calcuate correctly
-
--q queue style normal / tetris
--r default radius
--d density
+can time_delta be bigger than time_gap now?
+That'd be neat
 """
 
 me_st = discord.Game("battles! ⚔")
@@ -37,6 +35,7 @@ def multiliststr(items):
         return items[0] + " and " + items[1]
     return ", ".join(items[:~0]) + " and " + items[~0]
 
+check_index = 0
 async def day_loop():
     """
     Check if the time has passed on a game to give it more AP
@@ -44,51 +43,57 @@ async def day_loop():
     I'll be honest, this entire section has becomes a mess.
     """
     global games
+    global check_index
     while True:
         await asyncio.sleep(10) #don't check faster than every 10 seconds
+        check_index = (check_index + 1) % len(games)
+        channelID, game = list(games.items())[check_index]
 
-        for channelID, game in games.items(): # Error: fix because throws "dictionary changed size during iteration" error
-                                              # I think it just kills the for loop, but it's all in a while loop anyway.
-            if game.test_hourly_AP():
-                channel = client.get_channel(channelID)
-                if not channel:
-                    print("BAD: ", channelID) #I think this only comes up if the channel is deleted but somehow not the game?
-                    continue
-                hp = game.haunted_player()
-    
-                timedeltas = sorted([random.random() * game.time_delta.total_seconds() for _ in game.get_all_players()])
-                print("time", datetime.now(), channelID, timedeltas, hp)
+        if game.test_hourly_AP():
+            if not client.get_channel(channelID):
+                print("BAD: ", channelID) #I think this only comes up if the channel is deleted but somehow not the game?
+                continue                  #I think this shouldn't ever come up anymore?
 
-                for index, playerid in enumerate(random.sample(game.get_all_players(), len(game.players))):
-                    if index == 0:
-                        await asyncio.sleep(timedeltas[index])
-                    else:
-                        await asyncio.sleep(timedeltas[index] - timedeltas[index-1])
+            game.give_hourly_AP_onbeat()
+            haunted_player = game.haunted_player()
+            
+            if game.time_delta.total_seconds() < 10:
+                for index, playerid in enumerate(game.get_all_players()):
+                    await call_member(channelID, haunted_player, game, playerid)
+            else:
+                print("time", datetime.now(), channelID, haunted_player)
     
-                    member = client.get_user(playerid)
-                    if not member:# if player has left the game
-                        continue
-                    if member.dm_channel is None:
-                        await member.create_dm()
-    
-                    try:
-                        if game.players[playerid]["HP"] == 0:
-                            await member.dm_channel.send("Dead!\nGained 0 AP in <#{}>\n{}".format(channelID, game.info(playerid)))
-                        elif hp == playerid:
-                            #hauntlist = [channel.guild.get_member(i).display_name for i,v in game.players.items() if v["haunting"] == playerid]
-                            hauntlist = []
-                            for i,v in game.players.items():
-                                if v["haunting"] == playerid:
-                                    try:
-                                        hauntlist.append(channel.guild.get_member(i).display_name)
-                                    except AttributeError:
-                                        hauntlist.append("Removed Player")
-                                        pass
-                            await member.dm_channel.send("Haunted by {}!\nGained 0 AP in <#{}>\n{}".format(multiliststr(hauntlist), channelID, game.info(playerid)))
-                        else:
-                            await member.dm_channel.send("Gained 1 AP in <#{}>\n{}".format(channelID, game.info(playerid)))
-                    except discord.errors.Forbidden:
-                        print("Can't DM {} ({})".format(client.get_user(playerid).name, playerid))
+                for index, playerid in enumerate(game.player_next_hearts):
+                    timedelta = random.random() * game.time_delta.total_seconds() * player_next_hearts
+                    client.loop.call_later(timedelta, functools.partial(call_member, channelID, haunted_player, game, playerid))
+
+async def call_member(channelID, haunted_player, game, playerid):
+    member = client.get_user(playerid)
+    if not member: # if player has left the game
+        return
+    if member.dm_channel is None: # If there is no DM channel, make one.
+        await member.create_dm()  # Does this do anything, or is it placebo?
+
+    return_value = game.give_hourly_AP_offbeat(playerid, haunted_player)
+
+    try:
+        if return_value == "dead":
+            await member.dm_channel.send("Dead!\nGained 0 AP in <#{}>\n{}".format(channelID, game.info(playerid)))
+        elif return_value == "haunted":
+            # Get a list of every person haunting 'playerid' (That could be you!)
+            hauntlist = []
+            for index, player in game.players.items():
+                if player["haunting"] == playerid:
+                    hauntlist.append(namer(client.get_channel(channelID).guild, index))
+            await member.dm_channel.send("Haunted by {}!\nGained 0 AP in <#{}>\n{}".format(multiliststr(hauntlist), channelID, game.info(playerid)))
+        elif return_value == "+":
+            await member.dm_channel.send("Gained 1 AP in <#{}>\n{}".format(channelID, game.info(playerid)))
+
+        else:
+            print("Something went wrong:", return_value)
+
+    except discord.errors.Forbidden:
+        print("Disabled DMs: {} ({})".format(namer(client.get_channel(channelID).guild, index), playerid))
 
 def mention_to_id(m):
     if m.startswith("<@!"):
@@ -140,7 +145,7 @@ async def on_guild_channel_delete(channel):
     except KeyError:
         pass
 
-def namer(message, p):
+def namer(guild, p):
     """
     Takes a member.id p and returns a string of their display name, if it exists.
     Else return something.
@@ -149,8 +154,8 @@ def namer(message, p):
     if not p:
         # if p is None or otherwise false-y, it should not be stringified
         return "Nobody"
-    elif message.guild.get_member(p):
-        return message.guild.get_member(p).display_name.replace("@", "@.")
+    elif guild.get_member(p):
+        return guild.get_member(p).display_name.replace("@", "@.")
     else:
         return "{} (<@{}>)".format(p, p)
 
@@ -174,11 +179,27 @@ links how to play the game
 .invite
 Give the invite to the bot and server.
 
-.create [-s] [56m | 2h | 180s] [-24h | -5m | -30s]
+.create
 If no games are running, make a new one
-if "-s" is specified, then when each player has 0 AP or has opped to skip, the remaining time will be skipped.
+Creates a basic game, with points every 24 hours.
+
+.create [-s] [-a 56m | 2h | 180s] [-t 24h | 12h | 30m] [-r radius] [-d density] [-q queue]
+If no games are running, make a new one
+if "-s" is specified, then when each player has 0 AP or has opped to skip, the remaining time will be fast-forwarded.
 time and unit are the length of the time between AP gains, if unspecified, 24hours is used
-if `-time` is specified (with a dash), then it gives some randomization in the time between people's AP gains.
+
+-a specifies how long a round should last
+
+-t Specifies how much time should seperate all the players's AP gains from the start of the round
+
+-r sets the default radius of all spawning players [default 2]
+
+-d sets the number of spaces free to the number of players, default is 4. 2 for half, 8 for double.
+
+-q sets the order of how players get AP [default 1]
+    1 = all players in a random order
+    2 = Tetris Style, all players (twice) in a random order.
+    3+ = Tetris Style, all players (multiple times) in a random order.
 
 .join
 Joins a game before it starts.
@@ -186,7 +207,15 @@ Joins a game before it starts.
 .start
 (Game creator) Stats a game running
 
-Game actions:
+.help game
+Shows the help messgae for in-game commands
+```""")
+        return
+
+    if args[0].casefold() == ".help game":
+        await message.channel.send("""```
+.help game
+Displays this message
 
 .move direction
 Moves in one of the 8 cardinal directions.
@@ -238,12 +267,10 @@ There is no warning.
         return
 
     elif args[0].casefold() == ".invite":
-        await message.channel.send("""
-Invite the bot:
-https://discord.com/oauth2/authorize?client_id=809942527724486727&scope=bot&permissions=314432
-Or join the discord:
-https://discord.gg/BRSEPxXFuS
-""")
+        invite = await client.get_channel(870761497117196331).create_invite(max_age=10*60, unique=True, reason="Requested invite")
+        print("User {} ({}) created invite {}".format(message.author.name, message.author.id, invite))
+
+        await message.channel.send("Invite the bot:\nhttps://discord.com/oauth2/authorize?client_id=809942527724486727&scope=bot&permissions=314432\nOr join the discord:\n{}".format(invite))
         return
     elif args[0].casefold() == ".instructions":
         if message.author.dm_channel is None:
@@ -301,23 +328,40 @@ ADDITIONAL NOTES
                     if "-s" in message.content:
                         g_args["skip_on_0"] = True
 
-
                     leng1 = 0
                     time1 = "s"
-                    time_regex = re.search(r' (\d+)(h|m|s|H|M|S)', message.content)
-                    if time_regex:
-                        leng1 = int(time_regex.group(1))
-                        time1 = {"h":"hours", "m":"minutes", "s":"seconds"}[time_regex.group(2).lower()]
+                    regex_test = re.search(r'-a ?(\d+)(h|m|s|H|M|S)', message.content)
+                    if regex_test:
+                        leng1 = int(regex_test.group(1))
+                        time1 = {"h":"hours", "m":"minutes", "s":"seconds"}[regex_test.group(2).lower()]
                         g_args["time_gap"] = timedelta(**{time1: leng1})
                     
                     leng2 = 0
                     time2 = "s"
-                    time_regex2 = re.search(r' -(\d+)(h|m|s|H|M|S)', message.content)
-                    if time_regex2:
-                        leng2 = int(time_regex2.group(1))
-                        time2 = {"h":"hours", "m":"minutes", "s":"seconds"}[time_regex2.group(2).lower()]
+                    regex_test = re.search(r'-t ?(\d+)(h|m|s|H|M|S)', message.content)
+                    if regex_test:
+                        leng2 = int(regex_test.group(1))
+                        time2 = {"h":"hours", "m":"minutes", "s":"seconds"}[regex_test.group(2).lower()]
                         g_args["time_delta"] = timedelta(**{time2: leng2})
                     
+                    radius = 2
+                    regex_test = re.search(r'-r ?(\d+)', message.content)
+                    if regex_test:
+                        radius = int(regex_test.group(1))
+                        g_args["radius"] = radius
+                    
+                    density = 4
+                    regex_test = re.search(r'-d ?(\d+)', message.content)
+                    if regex_test:
+                        density = int(regex_test.group(1))
+                        g_args["density"] = density
+                    
+                    queue_tetris = 1
+                    regex_test = re.search(r'-q ?(\d+)', message.content)
+                    if regex_test:
+                        queue_tetris = int(regex_test.group(1))
+                        g_args["queue_tetris"] = queue_tetris
+
                     games[message.channel.id] = tank.tank_game(message.author.id, **g_args)
 
                     # and also join the user to the created game
@@ -326,7 +370,15 @@ ADDITIONAL NOTES
 
                     games[message.channel.id].save_state_to_file("./saves/{}.JSON".format(message.channel.id))
 
-                    await message.channel.send("Created a game with rounds every {} {}, random offset of {} {}, and auto-skip turned {}.".format(leng1, time1, leng2, time2, "on" if g_args.get("skip_on_0", False) else "off"))
+                    await message.channel.send(
+                        """Created a game
+```Auto-skip turned {}
+With rounds every {} {}
+Random offset of {} {}
+Radius of {}
+Density of {}
+Queue multiplier of {}```
+""".format("on" if g_args.get("skip_on_0", False) else "off", leng1, time1, leng2, time2, radius, density, queue_tetris))
                     return
 
             if message.channel.id not in games:
@@ -353,7 +405,7 @@ ADDITIONAL NOTES
 
             elif args[0].casefold() == ".whois":
                 if len(args) == 2:
-                    await message.channel.send(namer(message, game.who_is(args[1])))
+                    await message.channel.send(namer(message.guild, game.who_is(args[1])))
                 else:
                     await message.channel.send(".whois <position F4>")
 
@@ -403,10 +455,10 @@ ADDITIONAL NOTES
 
             elif args[0].casefold() == ".list":
                 #ERROR: 2K character limit
-                plist = [namer(message, p) + (" (haunting {})".format(namer(message, v["haunting"])) if v["HP"] == 0 and v["haunting"] else "") for p,v in game.players.items()]
+                plist = [namer(message.guild, p) + (" (haunting {})".format(namer(message.guild, v["haunting"])) if v["HP"] == 0 and v["haunting"] else "") for p,v in game.players.items()]
                 pre = "{} players in game:\n".format(len(plist))
                 hp = game.haunted_player()
-                post = ("\n\nHaunted player: " + (namer(message, hp) or "Tied!")) if any(v["HP"] == 0 for v in game.players.values()) else ""
+                post = ("\n\nHaunted player: " + (namer(message.guild, hp) if hp else "Tied!")) if any(v["HP"] == 0 for v in game.players.values()) else ""
                 await message.channel.send(pre + "\n".join(plist) + post)
 
             elif args[0].casefold() == ".info":
@@ -439,12 +491,8 @@ ADDITIONAL NOTES
                 delete_file("./saves/{}.JSON".format(message.channel.id))
                 games.pop(message.channel.id)
             else:
-                if game.test_all_ready_ap():
-                    for p in game.get_all_players():
-                        member = client.get_user(p)
-                        if member.dm_channel is None:
-                            await member.create_dm()
-                        await member.dm_channel.send("Gained 1 AP in <#{}>".format(message.channel.id))
+
+                #TODO: check if statemtnt is correct
 
                 game.save_state_to_file("./saves/{}.JSON".format(message.channel.id))
 

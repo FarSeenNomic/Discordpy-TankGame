@@ -6,8 +6,8 @@ import random
 
 from PIL import Image   #pip install pillow
 
-state_pregame = 0
-state_game = 1
+STATE_PREGAME = 0
+STATE_GAME = 1
 
 class NotEnoughHealth(Exception):
     pass
@@ -39,26 +39,6 @@ def has_transparency(img):
         if extrema[3][0] < 255:
             return True
     return False
-
-def playercount_to_size(pc):
-    """
-    Generate board whose area is approx 15 spaces / player
-    And whose ratio is approx the golden ratio
-
-    Probably some graph theory here to get a good number
-    """
-    # magic = sqrt(GOLDEN_RATIO)
-    magic = 1.272019650
-    x = math.ceil(math.sqrt(15 * pc) * magic)
-    y = math.ceil(math.sqrt(15 * pc) / magic)
-
-    if y > 26:  #height is limited by the alphabet
-        y = 26
-        x = 15 * pc / 26
-
-    #width should also be limited by the 26, as that's all the assets I made.
-
-    return [x, y]
 
 def distance(player1, player2):
     """
@@ -131,17 +111,30 @@ def direction_rightness(dir):
         raise BadDirection("Not a known direction")
 
 class tank_game():
-    def __init__(self, who_id=None, *, time_gap=datetime.timedelta(hours=24), time_delta=datetime.timedelta(hours=0), skip_on_0=False):
-        self.players = {}               #who is in the game
-        self.state = state_pregame      #loading the players up
-        self.board_size = [1,1]         #remember board size
-        self.owner = who_id             #who starts the game
-        self.time_gap = time_gap        #how quickly do people get AP
-        self.time_delta = time_delta    #how quickly between the first and last person geting AP
+    def __init__(self, who_id=None, *,
+        time_gap=datetime.timedelta(hours=24),
+        time_delta=datetime.timedelta(hours=0),
+        skip_on_0=False,
+        radius = 2,
+        density = 2,
+        queue_tetris = 1,
+        positive_haunts = True
+        ):
+        self.players = {}                #who is in the game
+        self.state = STATE_PREGAME       #loading the players up
+        self.board_size = [1,1]          #remember board size
+        self.owner = who_id              #who starts the game
+        self.time_gap = time_gap         #how quickly do people get AP
+        self.time_delta = time_delta     #how quickly between the first and last person geting AP
         self.next_time = datetime.datetime.now()    #when did we last get AP
-        self.skip_on_0 = skip_on_0      #Do you skip the remaining time when everyone has 0 AP?
-        self.hearts = []                #Positions of random hearts on the board.
-        self.version = 1                #1 = post-time-delta
+        self.skip_on_0 = skip_on_0       #Do you skip the remaining time when everyone has 0 AP?
+        self.hearts = []                 #Positions of random hearts on the board.
+        self.player_next_hearts = []     #A tetris-style queue of players deciding the next to get a heart
+        self.radius = radius             #Default radius upgrade
+        self.density = density           #Default density
+        self.queue_tetris = queue_tetris #Default queue style
+        self.positive_haunts = positive_haunts #Haunts give AP
+        self.version = 2                 #1 = post-time-delta, 2 = post-queue
 
     def save_state(self):
         return json.dumps({
@@ -156,6 +149,12 @@ class tank_game():
             "next_time": self.next_time.strftime("%Y-%m-%d %H:%M:%S"),
             "time_gap": self.time_gap.total_seconds(),
             "time_delta": self.time_delta.total_seconds(),
+
+            "player_next_hearts": self.player_next_hearts,
+            "radius": self.radius,
+            "density": self.density,
+            "queue_tetris": self.queue_tetris,
+            "positive_haunts": self.positive_haunts,
             })
 
     def load_state(self, loadstring):
@@ -182,6 +181,13 @@ class tank_game():
         except KeyError:
             self.time_delta = datetime.timedelta(seconds=0)
 
+        if self.version == 2:
+            self.player_next_hearts = data["player_next_hearts"]
+            self.radius = data["radius"]
+            self.density = data["density"]
+            self.queue_tetris = data["queue_tetris"]
+            self.positive_haunts = data["positive_haunts"]
+
     def save_state_to_file(self, file):
         """
         Writes the game object to a file
@@ -196,8 +202,36 @@ class tank_game():
         with open(file, 'r') as f:
             self.load_state(f.read())
 
+    def playercount_to_size(self, pc, density=4):
+        """
+        Generate board whose area is approx 15 spaces / player
+        And whose ratio is approx the golden ratio
+
+        Probably some graph theory here to get a good number
+        """
+        # magic = sqrt(GOLDEN_RATIO)
+        magic = 1.272019650
+        x = math.ceil(math.sqrt(15.0 * density/4 * pc) * magic)
+        y = math.ceil(math.sqrt(15.0 * density/4 * pc) / magic)
+
+        if y > 26:  #width is limited by the alphabet
+            y = 26
+            x = 15 * pc / 26
+
+        if x > 26:  #height is limited by the amount of assets I rendered
+            x = 26
+
+        return [x, y]
+
+    def requeue(self):
+        """
+        If the player heart queue is used, reload it according to the queue style
+        """
+        self.player_next_hearts = list(self.players.keys()) * self.queue_tetris
+        random.shuffle(self.player_next_hearts)
+
     def active(self):
-        return self.state == state_game
+        return self.state == STATE_GAME
 
     def selector_in_game(self, who_id, first_person=True):
         """
@@ -249,36 +283,35 @@ class tank_game():
             raise GameJoinError("Player already in game")
 
         #don't add while the game is in progress
-        elif self.state != state_pregame:
+        if self.state != STATE_PREGAME:
             raise GameJoinError("Game already started")
 
-        else:
-            self.players[who_id] = {"HP": 3, "range": 2, "X": 0, "Y": 0, "AP": 0, "haunting": None, "skip_turn": False}
+        self.players[who_id] = {"HP": 3, "range": self.radius, "X": 0, "Y": 0, "AP": 0, "haunting": None, "skip_turn": False}
         return "You joined the game!"
 
     def start_game(self, who_id):
-        if self.state != state_pregame:
+        if self.state != STATE_PREGAME:
             raise GameJoinError("Game already started")
-        elif who_id != self.owner:
+        if who_id != self.owner:
             raise GameJoinError("You are not allowed to start the game.")
-        elif len(self.players) < 2:
+        if len(self.players) < 2:
             raise GameJoinError("Not enough players to start the game (Min 2).")
-        else:
-            # set game as being played
-            self.state = state_game
 
-            #set start time
-            self.next_time = datetime.datetime.now()
+        # set game as being played
+        self.state = STATE_GAME
 
-            # set board size
-            self.board_size = playercount_to_size(len(self.players))
+        #set start time
+        self.next_time = datetime.datetime.now()
 
-            # make sure player doesn't spawn on top of another player
-            locs = random.sample(range(0, self.board_size[0] * self.board_size[1] - 1), len(self.players))
+        # set board size
+        self.board_size = self.playercount_to_size(len(self.players))
 
-            for i, p in enumerate(self.players):
-                self.players[p]["X"] = locs[i] % self.board_size[0]
-                self.players[p]["Y"] = locs[i] // self.board_size[0]
+        # Make sure player doesn't spawn on top of another player
+        locs = random.sample(range(0, self.board_size[0] * self.board_size[1] - 1), len(self.players))
+
+        for i, p in enumerate(self.players):
+            self.players[p]["X"] = locs[i] % self.board_size[0]
+            self.players[p]["Y"] = locs[i] // self.board_size[0]
         return "Started the game!"
 
     def is_playable(self):
@@ -443,6 +476,8 @@ class tank_game():
         """
         returns the player with the most haunted votes
         Ties fail
+
+        To Update: Threshold insteaad of top-only
         """
         haunting_counts = Counter([v["haunting"] for v in self.players.values() if v["HP"] == 0])
         haunted_players = haunting_counts.most_common(2)
@@ -457,36 +492,39 @@ class tank_game():
 
         return haunted_players[0][0]
 
-    def test_all_ready_ap(self):
-        """
-        if everyone is 0 AP or pass, give AP
-        """
-        if self.active() and self.skip_on_0 and all(v["skip_turn"] or v["AP"]==0 for p, v in self.players.items()):
-            self.next_time = datetime.datetime.now()
-            self.give_hourly_AP_all()
-            return True
-        return False
-
     def test_hourly_AP(self):
         """
         if the next time has passed, give AP
         """
         if self.active() and self.next_time < datetime.datetime.now():
-            self.give_hourly_AP_all()
+            return True
+        if self.active() and self.skip_on_0 and all(v["skip_turn"] or v["AP"] == 0 or v["HP"] == 0 for p, v in self.players.items()):
+            self.next_time = datetime.datetime.now()
             return True
         return False
 
-    def give_hourly_AP_all(self):
-        haunted_player = self.haunted_player()
-        for player in self.players:
-            if player != haunted_player and self.players[player]["HP"] > 0:
-                self.players[player]["AP"] += 1
-                self.players[player]["skip_turn"] = False
-        self.next_time += self.time_gap
+    def give_hourly_AP_offbeat(self, player, haunted_player):
+        """
+        the "offbeat" happens between timegaps, at random-ish intervals, giving players AP
+        """
+        if player == haunted_player:
+            return "haunted"
+        if self.players[player]["HP"] == 0:
+            return "dead"
 
+        self.players[player]["AP"] += 1
+        self.players[player]["skip_turn"] = False
+        return "+"
+
+    def give_hourly_AP_onbeat(self):
+        """
+        the "onbeat" happens at every time_gap, spawning a new heart
+        """
+        self.next_time += self.time_gap
 
         if not self.dead_game():
             # add heart to board
+            # this loop ends... right?
             while True:
                 heartpos = [
                     random.randint(0, self.board_size[0]-1),
@@ -590,7 +628,7 @@ if __name__ == '__main__':
     game.start_game(269904594526666754)
 
     #print(1, game.hearts)
-    #game.give_hourly_AP_all()
+    #game.give_hourly_AP_onbeat()
     #print(2, game.hearts)
 
     game.display(box_size=64, thickness=2)
