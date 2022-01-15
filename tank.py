@@ -9,19 +9,22 @@ from PIL import Image   #pip install pillow
 STATE_PREGAME = 0
 STATE_GAME = 1
 
-class NotEnoughHealth(Exception):
+class GameError(Exception):
     pass
-class UnknownCommand(Exception):
+    
+class NotEnoughHealth(GameError):
     pass
-class NotEnoughAP(Exception):
+class UnknownCommand(GameError):
     pass
-class NotInRange(Exception):
+class NotEnoughAP(GameError):
     pass
-class BadDirection(Exception):
+class NotInRange(GameError):
     pass
-class PlayerNotInGame(Exception):
+class BadDirection(GameError):
     pass
-class GameJoinError(Exception):
+class PlayerNotInGame(GameError):
+    pass
+class GameJoinError(GameError):
     pass
 
 def has_transparency(img):

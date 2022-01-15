@@ -20,6 +20,127 @@ can time_delta be bigger than time_gap now?
 That'd be neat
 """
 
+help_message_game = """```
+.help game
+Displays this message
+
+.move direction
+Moves in one of the 8 cardinal directions.
+> N | S | E | W | NW | NE | SW | SE
+> U | D | L | R | UL | UR | DL | DR
+> numpad direction
+
+.attack <@player>
+attacks a player in range
+
+.giveap <@player>
+gives AP to a player in range
+
+.givehp <@player>
+gives HP to a player in range
+
+.haunt <@player>
+If you are dead, mark a player for not getting AP
+
+.heal
+For 3 AP, heals you
+
+.upgrade
+For 3 AP, grows your range
+
+.info
+DMs game info, currently just your AP and range
+
+.skip
+If skip mode is enabled, marks you for skipping your turn if you still have AP.
+
+.list
+list players currently in the game
+
+.whois <position>
+Returns the player at the position 'position'
+
+.whereis <@player>
+Returns the player at the position 'position'
+
+.board
+view the board
+
+.DELETE
+Case sensitive
+Stops and removes the current game running. Can only be used by the person who started the game or a server admin.
+There is no warning.
+```"""
+
+help_message_main = """```
+.help
+Displays this message
+
+.instructions
+links how to play the game
+
+.invite
+Give the invite to the bot and server.
+
+.create
+If no games are running, make a new one
+Creates a basic game, with points every 24 hours.
+
+.create [-s] [-a 56m | 2h | 180s] [-t 24h | 12h | 30m] [-r radius] [-d density] [-q queue]
+If no games are running, make a new one
+if "-s" is specified, then when each player has 0 AP or has opped to skip, the remaining time will be fast-forwarded.
+time and unit are the length of the time between AP gains, if unspecified, 24hours is used
+
+-a specifies how long a round should last
+
+-t Specifies how much time should seperate all the players's AP gains from the start of the round
+
+-r sets the default radius of all spawning players [default 2]
+
+-d sets the number of spaces free to the number of players, default is 4. 2 for half, 8 for double.
+
+-q sets the order of how players get AP [default 1]
+    1 = all players in a random order
+    2 = Tetris Style, all players (twice) in a random order.
+    3+ = Tetris Style, all players (multiple times) in a random order.
+
+.join
+Joins a game before it starts.
+
+.start
+(Game creator) Stats a game running
+
+.help game
+Shows the help messgae for in-game commands
+```"""
+
+help_message_instructions = """```
+TRUE COMBAT
+Survive to the end!
+
+RULES
+* All players start at a random location on the grid, and have 3 hearts and 0 Action Points.
+* Every 24 hours, everyone will receive 1 Action Point (AP).
+* At any time you like, you can do one of the four following actions:
+    1. Move to an adjacent, unoccupied square (1 AP)
+    2. Shoot someone who is within your range (1 AP). Shooting someone removes 1 heart from their health.
+    3. Add a heart (3 AP)
+    4. Upgrade your range (3 AP)
+* At the start of the game, everyone has a range of 2. That is, they can shoot or trade with somehow within 2 squares of them. Upgrading your shooting range increases this by 1 square each time.
+* If a player is reduced to 0 hearts, then they are dead. Any action points the dead player had are transferred to the player who killed them. Dead players remain on the board and not removed.
+* Players are able to send gifts of hearts or actions points to any player currently within their range.
+* Dead players can have a heart sent to them. This will revive that player who will have 1 heart and 0 AP.
+
+ADDITIONAL NOTES
+* Dead players form a jury. Each day they vote, and whoever received most votes will be 'haunted', and not revive any AP for that day.
+* Once a day, at a random time, a hear will spawn on the field. The first player to move into the square containing the heart will revive an additional heart.
+* Action points are secret! Probably a good idea to try and hide how many you have.
+* You can't win this game without making some friends and stabbing some backs. Probably.```"""
+
+#assert(len(help_message_game) < 2000)
+#assert(len(help_message_main) < 2000)
+#assert(len(help_message_instructions) < 2000)
+
 me_st = discord.Game("battles! ⚔")
 intents = discord.Intents.default()
 intents.members = True
@@ -45,7 +166,7 @@ async def day_loop():
     global games
     global check_index
     while True:
-        await asyncio.sleep(10) #don't check faster than every 10 seconds
+        await asyncio.sleep(3) #don't check faster than every 10 seconds
         check_index = (check_index + 1) % len(games)
         channelID, game = list(games.items())[check_index]
 
@@ -57,12 +178,11 @@ async def day_loop():
             game.give_hourly_AP_onbeat()
             haunted_player = game.haunted_player()
             
+            print("time", datetime.now(), channelID, haunted_player)
             if game.time_delta.total_seconds() < 10:
                 for index, playerid in enumerate(game.get_all_players()):
                     await call_member(channelID, haunted_player, game, playerid)
             else:
-                print("time", datetime.now(), channelID, haunted_player)
-    
                 for index, playerid in enumerate(game.player_next_hearts):
                     timedelta = random.random() * game.time_delta.total_seconds() * player_next_hearts
                     client.loop.call_later(timedelta, functools.partial(call_member, channelID, haunted_player, game, playerid))
@@ -119,12 +239,12 @@ async def on_ready():
 
         print("ready.")
         while True:
-            try:
-                await day_loop()
-            except Exception as e:
+            #try:
+            await day_loop()
+            #except Exception as e:
                 # can have some random errors
                 # Ignore and continue chugging.
-                print(e)
+            #    print("You should fix:", e)
 
 #The width in pixels of any user's image
 board_size = 64
@@ -169,103 +289,15 @@ async def on_message(message):
         return
 
     if args[0].casefold() == ".help":
-        await message.channel.send("""```
-.help
-Displays this message
-
-.instructions
-links how to play the game
-
-.invite
-Give the invite to the bot and server.
-
-.create
-If no games are running, make a new one
-Creates a basic game, with points every 24 hours.
-
-.create [-s] [-a 56m | 2h | 180s] [-t 24h | 12h | 30m] [-r radius] [-d density] [-q queue]
-If no games are running, make a new one
-if "-s" is specified, then when each player has 0 AP or has opped to skip, the remaining time will be fast-forwarded.
-time and unit are the length of the time between AP gains, if unspecified, 24hours is used
-
--a specifies how long a round should last
-
--t Specifies how much time should seperate all the players's AP gains from the start of the round
-
--r sets the default radius of all spawning players [default 2]
-
--d sets the number of spaces free to the number of players, default is 4. 2 for half, 8 for double.
-
--q sets the order of how players get AP [default 1]
-    1 = all players in a random order
-    2 = Tetris Style, all players (twice) in a random order.
-    3+ = Tetris Style, all players (multiple times) in a random order.
-
-.join
-Joins a game before it starts.
-
-.start
-(Game creator) Stats a game running
-
-.help game
-Shows the help messgae for in-game commands
-```""")
+        if len(args) == 1:
+            await message.channel.send(help_message_main)
+        elif len(args) == 2 and args[1].casefold() == "game":
+            await message.channel.send(help_message_game)
+        else:
+            await message.channel.send("Unknown help")
         return
 
-    if args[0].casefold() == ".help game":
-        await message.channel.send("""```
-.help game
-Displays this message
-
-.move direction
-Moves in one of the 8 cardinal directions.
-> N | S | E | W | NW | NE | SW | SE
-> U | D | L | R | UL | UR | DL | DR
-> numpad direction
-
-.attack <@player>
-attacks a player in range
-
-.giveap <@player>
-gives AP to a player in range
-
-.givehp <@player>
-gives HP to a player in range
-
-.haunt <@player>
-If you are dead, mark a player for not getting AP
-
-.heal
-For 3 AP, heals you
-
-.upgrade
-For 3 AP, grows your range
-
-.info
-DMs game info, currently just your AP and range
-
-.skip
-If skip mode is enabled, marks you for skipping your turn if you still have AP.
-
-.list
-list players currently in the game
-
-.whois <position>
-Returns the player at the position 'position'
-
-.whereis <@player>
-Returns the player at the position 'position'
-
-.board
-view the board
-
-.DELETE
-Case sensitive
-Stops and removes the current game running. Can only be used by the person who started it or a server admin.
-There is no warning.
-```""")
-        return
-
+        
     elif args[0].casefold() == ".invite":
         invite = await client.get_channel(870761497117196331).create_invite(max_age=10*60, unique=True, reason="Requested invite")
         print("User {} ({}) created invite {}".format(message.author.name, message.author.id, invite))
@@ -276,28 +308,7 @@ There is no warning.
         if message.author.dm_channel is None:
             await message.author.create_dm()
         try:
-            await message.author.dm_channel.send("""```
-TRUE COMBAT
-Survive to the end!
-
-RULES
-* All players start at a random location on the grid, and have 3 hearts and 0 Action Points.
-* Every 24 hours, everyone will receive 1 Action Point (AP).
-* At any time you like, you can do one of the four following actions:
-    1. Move to an adjacent, unoccupied square (1 AP)
-    2. Shoot someone who is within your range (1 AP). Shooting someone removes 1 heart from their health.
-    3. Add a heart (3 AP)
-    4. Upgrade your range (3 AP)
-* At the start of the game, everyone has a range of 2. That is, they can shoot or trade with somehow within 2 squares of them. Upgrading your shooting range increases this by 1 square each time.
-* If a player is reduced to 0 hearts, then they are dead. Any action points the dead player had are transferred to the player who killed them. Dead players remain on the board and not removed.
-* Players are able to send gifts of hearts or actions points to any player currently within their range.
-* Dead players can have a heart sent to them. This will revive that player who will have 1 heart and 0 AP.
-
-ADDITIONAL NOTES
-* Dead players form a jury. Each day they vote, and whoever received most votes will be 'haunted', and not revive any AP for that day.
-* Once a day, at a random time, a hear will spawn on the field. The first player to move into the square containing the heart will revive an additional heart.
-* Action points are secret! Probably a good idea to try and hide how many you have.
-* You can't win this game without making some friends and stabbing some backs. Probably.```""")
+            await message.author.dm_channel.send(help_message_instructions)
             await message.channel.send("DMd how to play")
         except discord.errors.Forbidden:
             await message.channel.send("Can't DM!")
@@ -496,24 +507,11 @@ Queue multiplier of {}```
 
                 game.save_state_to_file("./saves/{}.JSON".format(message.channel.id))
 
-        except tank.NotEnoughHealth as e:
+        except tank.GameError as e:
             await message.channel.send(str(e) or "Unknown Error :(")
-        except tank.UnknownCommand as e:
-            await message.channel.send(str(e) or "Unknown Error :(")
-        except tank.NotEnoughAP as e:
-            await message.channel.send(str(e) or "Unknown Error :(")
-        except tank.NotInRange as e:
-            await message.channel.send(str(e) or "Unknown Error :(")
-        except tank.BadDirection as e:
-            await message.channel.send(str(e) or "Unknown Error :(")
-        except tank.PlayerNotInGame as e:
-            await message.channel.send(str(e) or "Unknown Error :(")
-        except tank.GameJoinError as e:
-            await message.channel.send(str(e) or "Unknown Error :(")
-        #except ValueError as e:
-        #    await message.channel.send("Not a valid player.")
         except discord.errors.Forbidden as e:
-            await message.channel.send("Error: Not enough permissions")
+            await message.channel.send("Error: Not enough permissions (Does someone have their DMs blocked?)")
+            print(e)
 
 #points to a file containing only the bot token.
 client.run(open("../Discord/TOKENTANK", "r").read().rstrip())
