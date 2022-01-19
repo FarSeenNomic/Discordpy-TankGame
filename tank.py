@@ -506,19 +506,6 @@ class tank_game():
             return True
         return False
 
-    def give_hourly_AP_offbeat(self, player, haunted_player):
-        """
-        the "offbeat" happens between timegaps, at random-ish intervals, giving players AP
-        """
-        if player == haunted_player:
-            return "haunted"
-        if self.players[player]["HP"] == 0:
-            return "dead"
-
-        self.players[player]["AP"] += 1
-        self.players[player]["skip_turn"] = False
-        return "+"
-
     def give_hourly_AP_onbeat(self):
         """
         the "onbeat" happens at every time_gap, spawning a new heart
@@ -541,6 +528,19 @@ class tank_game():
                     break  # only executed if the inner loop did NOT break
                 continue  # only executed if the inner loop DID break
             self.hearts.append(heartpos)
+
+    def give_hourly_AP_offbeat(self, player, haunted_player):
+        """
+        the "offbeat" happens between timegaps, at random-ish intervals, giving players AP
+        """
+        if player == haunted_player:
+            return "haunted"
+        if self.players[player]["HP"] == 0:
+            return "dead"
+
+        self.players[player]["AP"] += 1
+        self.players[player]["skip_turn"] = False
+        return "+"
 
     def dead_game(self):
         return len(self.hearts) > 5*len(self.players)

@@ -177,15 +177,18 @@ async def day_loop():
 
             game.give_hourly_AP_onbeat()
             haunted_player = game.haunted_player()
-            
+
             print("time", datetime.now(), channelID, haunted_player)
             if game.time_delta.total_seconds() < 10:
-                for index, playerid in enumerate(game.get_all_players()):
+                for playerid in game.get_all_players():
                     await call_member(channelID, haunted_player, game, playerid)
             else:
-                for index, playerid in enumerate(game.player_next_hearts):
-                    timedelta = random.random() * game.time_delta.total_seconds() * player_next_hearts
-                    client.loop.call_later(timedelta, functools.partial(call_member, channelID, haunted_player, game, playerid))
+                #Someone must instantly gain AP, or else the loop will see all players with 0 AP and repeatedly call.
+                game.requeue()
+                timedelta = 0
+                for playerid in game.player_next_hearts:
+                    client.loop.call_later(timedelta, asyncio.create_task, call_member(channelID, haunted_player, game, playerid))
+                    timedelta = random.random() * game.time_delta.total_seconds()
 
 async def call_member(channelID, haunted_player, game, playerid):
     member = client.get_user(playerid)
@@ -213,7 +216,7 @@ async def call_member(channelID, haunted_player, game, playerid):
             print("Something went wrong:", return_value)
 
     except discord.errors.Forbidden:
-        print("Disabled DMs: {} ({})".format(namer(client.get_channel(channelID).guild, index), playerid))
+        print("Disabled DMs: {} ({})".format(namer(client.get_channel(channelID).guild, playerid), playerid))
 
 def mention_to_id(m):
     if m.startswith("<@!"):
