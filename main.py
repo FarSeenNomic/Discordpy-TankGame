@@ -66,6 +66,10 @@ Returns the player at the position 'position'
 .board
 view the board
 
+.suicide <@player>
+Gives a certain player (may be outside your range) 2 AP, 1 HP, and 2 Range.
+You must have at least 2 AP to begain with, and will die afterwards.
+
 .DELETE
 Case sensitive
 Stops and removes the current game running. Can only be used by the person who started the game or a server admin.
@@ -451,6 +455,12 @@ Queue multiplier of {}```
                     await message.channel.send(game.giveHP(message.author.id, mention_to_id(args[1])))
                 else:
                     await message.channel.send(".givehp <player>")
+
+            elif args[0].casefold() == ".suicide":
+                if len(args) == 2:
+                    await message.channel.send(game.suicide(message.author.id, mention_to_id(args[1])))
+                else:
+                    await message.channel.send(".suicide <player>")
 
             elif args[0].casefold() == ".haunt":
                 if len(args) == 2:

@@ -444,6 +444,17 @@ class tank_game():
         self.players[who_id]["HP"] += 1
         return "Healed!"
 
+    def suicide(self, who_id):
+        self.selector_in_game(who_id)
+        self.selector_alive(who_id)
+        self.selector_minimum_AP(who_id, 2)
+
+        self.players[target]["AP"] += 2
+        self.players[target]["HP"] += 1
+        self.players[who_id]["HP"] -= 20
+        self.players[target]["range"] += 2
+        return "You Have Taken The L"
+
     def upgrade(self, who_id):
         self.selector_in_game(who_id)
         self.selector_alive(who_id)
