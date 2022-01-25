@@ -482,7 +482,7 @@ class tank_game():
 
         To Update: Threshold insteaad of top-only
         """
-        haunting_counts = Counter([v["haunting"] for v in self.players.values() if v["HP"] == 0])
+        haunting_counts = Counter([v["haunting"] for v in self.players.values() if v["HP"] == 0 and v["haunting"]])
         haunted_players = haunting_counts.most_common(2)
         if len(haunted_players) == 0:
             return None
