@@ -199,9 +199,13 @@ async def call_member(channelID, haunted_player, game, playerid):
 
     return_value = game.give_hourly_AP_offbeat(playerid, haunted_player)
 
+    #game.player_next_hearts.remove(playerid)
+
     try:
         if return_value == "dead":
-            await member.dm_channel.send("Dead!\nGained 0 AP in <#{}>\n{}".format(channelID, game.info(playerid)))
+            # People have requested they don't get messaged while dead.
+            #await member.dm_channel.send("Dead!\nGained 0 AP in <#{}>\n{}".format(channelID, game.info(playerid)))
+            pass
         elif return_value == "haunted":
             # Get a list of every person haunting 'playerid' (That could be you!)
             hauntlist = []
