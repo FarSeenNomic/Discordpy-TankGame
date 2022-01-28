@@ -393,7 +393,6 @@ class tank_game():
         self.selector_in_game(who_id)
         self.selector_in_game(target, False)
         self.selector_alive(who_id)
-        self.selector_alive(target, False)
         self.selector_minimum_AP(who_id, 1)
         self.selector_not_self(who_id, target)
         self.selector_range(who_id, target)
