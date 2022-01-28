@@ -421,6 +421,12 @@ Queue multiplier of {}```
                 else:
                     await message.channel.send(".move <direction>")
 
+            elif args[0].casefold() == ".push":
+                if len(args) == 3:
+                    await message.channel.send(game.move(message.author.id, mention_to_id(args[1]), args[2]))
+                else:
+                    await message.channel.send(".push <@player> <direction>")
+
             elif args[0].casefold() == ".whois":
                 if len(args) == 2:
                     await message.channel.send(namer(message.guild, game.who_is(args[1])))

@@ -358,10 +358,11 @@ class tank_game():
         p = self.players[who_id]
         return chr(p["X"]+ord('A')) + str(p["Y"]+1)
 
-    def move(self, who_id, direction):
+    def move(self, who_id, direction, *, forced=False):
         self.selector_in_game(who_id)
-        self.selector_alive(who_id)
-        self.selector_minimum_AP(who_id, 1)
+        if not forced:
+            self.selector_alive(who_id)
+            self.selector_minimum_AP(who_id, 1)
 
         #make sure still on board
         if not 0 <= (self.players[who_id]["X"]+direction_rightness(direction)) < self.board_size[0]:
@@ -374,8 +375,8 @@ class tank_game():
                 (self.players[who_id]["Y"]-direction_upness(direction)) == i["Y"]:
                 raise BadDirection("Can't stand on another player.")
 
-
-        self.players[who_id]["AP"] -= 1
+        if not forced:
+            self.players[who_id]["AP"] -= 1
         self.players[who_id]["X"] += direction_rightness(direction)
         self.players[who_id]["Y"] -= direction_upness(direction)
 
@@ -387,6 +388,20 @@ class tank_game():
             self.hearts.remove(playerpos)
 
         return "Moved {}".format(direction)
+
+    def push(self, who_id, target, direction):
+        self.selector_in_game(who_id)
+        self.selector_in_game(target, False)
+        self.selector_alive(who_id)
+        self.selector_alive(target, False)
+        self.selector_minimum_AP(who_id, 1)
+        self.selector_not_self(who_id, target)
+        self.selector_range(who_id, target)
+
+        self.players[who_id]["AP"] -= 1
+        move(self, target, direction, forced=True)
+
+        return "Moved <@{}> {}".format(target, direction)
 
     def attack(self, who_id, target):
         self.selector_in_game(who_id)
