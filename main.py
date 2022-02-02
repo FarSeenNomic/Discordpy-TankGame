@@ -39,6 +39,9 @@ gives AP to a player in range
 .givehp <@player>
 gives HP to a player in range
 
+.push <@player> <direction>
+pushes a targeted player
+
 .haunt <@player>
 If you are dead, mark a player for not getting AP
 
@@ -191,6 +194,9 @@ async def day_loop():
                     timedelta = random.random() * game.time_delta.total_seconds()
 
 async def call_member(channelID, haunted_player, game, playerid):
+    if game.finished():
+        return
+
     member = client.get_user(playerid)
     if not member: # if player has left the game
         return
@@ -199,12 +205,14 @@ async def call_member(channelID, haunted_player, game, playerid):
 
     return_value = game.give_hourly_AP_offbeat(playerid, haunted_player)
 
-    #game.player_next_hearts.remove(playerid)
+    # I think this fixes double giving hearts if I restart the code mid-giving out.
+    # It will still leave a visual error if the board is not changed.
+    game.player_next_hearts.remove(playerid)
 
     try:
         if return_value == "dead":
             # People have requested they don't get messaged while dead.
-            #await member.dm_channel.send("Dead!\nGained 0 AP in <#{}>\n{}".format(channelID, game.info(playerid)))
+            #await member.dm_channel.send(f"Dead!\nGained 0 AP in <#{channelID}>\n{game.info(playerid)}")
             pass
         elif return_value == "haunted":
             # Get a list of every person haunting 'playerid' (That could be you!)
@@ -212,15 +220,15 @@ async def call_member(channelID, haunted_player, game, playerid):
             for index, player in game.players.items():
                 if player["haunting"] == playerid:
                     hauntlist.append(namer(client.get_channel(channelID).guild, index))
-            await member.dm_channel.send("Haunted by {}!\nGained 0 AP in <#{}>\n{}".format(multiliststr(hauntlist), channelID, game.info(playerid)))
+            await member.dm_channel.send(f"Haunted by {multiliststr(hauntlist)}!\nGained 0 AP in <#{channelID}>\n{game.info(playerid)}")
         elif return_value == "+":
-            await member.dm_channel.send("Gained 1 AP in <#{}>\n{}".format(channelID, game.info(playerid)))
+            await member.dm_channel.send(f"Gained 1 AP in <#{channelID}>\n{game.info(playerid)}")
 
         else:
             print("Something went wrong:", return_value)
 
     except discord.errors.Forbidden:
-        print("Disabled DMs: {} ({})".format(namer(client.get_channel(channelID).guild, playerid), playerid))
+        print(f"Disabled DMs: {namer(client.get_channel(channelID).guild, playerid)} ({playerid})")
 
 def mention_to_id(m):
     if m.startswith("<@!"):
@@ -241,7 +249,7 @@ async def on_ready():
             if fn.endswith(".JSON"):
                 print("loaded", fn)
                 game = tank.tank_game()
-                game.load_state_from_file("./saves/{}".format(fn))
+                game.load_state_from_file(f"./saves/{fn}")
                 games[int(fn[:-5])] = game
 
         print("ready.")
@@ -258,17 +266,17 @@ board_size = 64
 
 async def get_user_image(user):
     url = user.avatar_url_as(format="png", static_format='png')
-    await url.save("./dynamic_images/{}.png".format(user.id))
+    await url.save(f"./dynamic_images/{user.id}.png")
 
 async def load_and_send_board(message, game, content=None):
-    game.display("./maps/{}.png".format(message.channel.id), box_size=board_size, thickness=2)
-    await message.channel.send(content, file=discord.File("./maps/{}.png".format(message.channel.id)))
+    game.display(f"./maps/{message.channel.id}.png", box_size=board_size, thickness=2)
+    await message.channel.send(content, file=discord.File(f"./maps/{message.channel.id}.png"))
 
 @client.event
 async def on_guild_channel_delete(channel):
     try:
         games.pop(channel.id)
-        delete_file("./saves/{}.JSON".format(channel.id))
+        delete_file(f"./saves/{channel.id}.JSON")
     except KeyError:
         pass
 
@@ -284,7 +292,7 @@ def namer(guild, p):
     elif guild.get_member(p):
         return guild.get_member(p).display_name.replace("@", "@.")
     else:
-        return "{} (<@{}>)".format(p, p)
+        return f"{p} (<@{p}>)"
 
 @client.event
 async def on_message(message):
@@ -307,9 +315,9 @@ async def on_message(message):
         
     elif args[0].casefold() == ".invite":
         invite = await client.get_channel(870761497117196331).create_invite(max_age=10*60, unique=True, reason="Requested invite")
-        print("User {} ({}) created invite {}".format(message.author.name, message.author.id, invite))
+        print(f"User {message.author.name} ({message.author.id}) created invite {invite}")
 
-        await message.channel.send("Invite the bot:\nhttps://discord.com/oauth2/authorize?client_id=809942527724486727&scope=bot&permissions=314432\nOr join the discord:\n{}".format(invite))
+        await message.channel.send(f"Invite the bot:\nhttps://discord.com/oauth2/authorize?client_id=809942527724486727&scope=bot&permissions=314432\nOr join the discord:\n{invite}")
         return
     elif args[0].casefold() == ".instructions":
         if message.author.dm_channel is None:
@@ -328,7 +336,7 @@ async def on_message(message):
             #try loading the game from file if it already exists
             try:
                 game = tank.tank_game()
-                game.load_state_from_file("./saves/{}.JSON".format(message.channel.id))
+                game.load_state_from_file(f"./saves/{message.channel.id}.JSON")
                 games[message.channel.id] = game
             except FileNotFoundError:
                 pass
@@ -386,17 +394,17 @@ async def on_message(message):
                     games[message.channel.id].insert_player(message.author.id)
                     await get_user_image(message.author)
 
-                    games[message.channel.id].save_state_to_file("./saves/{}.JSON".format(message.channel.id))
+                    games[message.channel.id].save_state_to_file(f"./saves/{message.channel.id}.JSON")
 
                     await message.channel.send(
-                        """Created a game
-```Auto-skip turned {}
-With rounds every {} {}
-Random offset of {} {}
-Radius of {}
-Density of {}
-Queue multiplier of {}```
-""".format("on" if g_args.get("skip_on_0", False) else "off", leng1, time1, leng2, time2, radius, density, queue_tetris))
+f'''Created a game
+```Auto-skip turned {"on" if g_args.get("skip_on_0", False) else "off"}
+With rounds every {leng1} {time1}
+Random offset of {leng2} {time2}
+Radius of {radius}
+Density of {density}
+Queue multiplier of {queue_tetris}```
+''')
                     return
 
             if message.channel.id not in games:
@@ -479,8 +487,8 @@ Queue multiplier of {}```
 
             elif args[0].casefold() == ".list":
                 #ERROR: 2K character limit
-                plist = [namer(message.guild, p) + (" (haunting {})".format(namer(message.guild, v["haunting"])) if v["HP"] == 0 and v["haunting"] else "") for p,v in game.players.items()]
-                pre = "{} players in game:\n".format(len(plist))
+                plist = [namer(message.guild, p) + (f' (haunting {namer(message.guild, v["haunting"])})' if v["HP"] == 0 and v["haunting"] else "") for p,v in game.players.items()]
+                pre = f"{len(plist)} players in game:\n"
                 hp = game.haunted_player()
                 post = ("\n\nHaunted player: " + (namer(message.guild, hp) if hp else "Tied!")) if any(v["HP"] == 0 for v in game.players.values()) else ""
                 await message.channel.send(pre + "\n".join(plist) + post)
@@ -488,7 +496,7 @@ Queue multiplier of {}```
             elif args[0].casefold() == ".info":
                 if message.author.dm_channel is None:
                     await message.author.create_dm()
-                await message.author.dm_channel.send("{} in <#{}>".format(game.info(message.author.id), message.channel.id))
+                await message.author.dm_channel.send(f"{game.info(message.author.id)} in <#{message.channel.id}>")
                 await message.channel.send("DMd AP and Range")
 
             elif args[0].casefold() == ".board":
@@ -501,24 +509,25 @@ Queue multiplier of {}```
             elif args[0] == ".DELETE":
                 if game.owner == message.author.id or message.author.guild_permissions.administrator:
                     games.pop(message.channel.id)
-                    delete_file("./saves/{}.JSON".format(message.channel.id))
+                    delete_file(f"./saves/{message.channel.id}.JSON")
                     await message.channel.send("Game has been deleted successfully.")
                 else:
                     await message.channel.send("Not game owner.")
                 return
 
             if game.active() and not game.is_playable():
+                game.finish()
                 for p in game.get_all_players():
                     if game.players[p]["HP"] >= 1:
-                        await message.channel.send("The game is over! <@{}> is the winner!".format(p))
+                        await message.channel.send(f"The game is over! <@{p}> is the winner!")
                         break
-                delete_file("./saves/{}.JSON".format(message.channel.id))
+                delete_file(f"./saves/{message.channel.id}.JSON")
                 games.pop(message.channel.id)
             else:
 
                 #TODO: check if statemtnt is correct
 
-                game.save_state_to_file("./saves/{}.JSON".format(message.channel.id))
+                game.save_state_to_file(f"./saves/{message.channel.id}.JSON")
 
         except tank.GameError as e:
             await message.channel.send(str(e) or "Unknown Error :(")

@@ -8,6 +8,7 @@ from PIL import Image   #pip install pillow
 
 STATE_PREGAME = 0
 STATE_GAME = 1
+STATE_OVER = 2
 
 class GameError(Exception):
     pass
@@ -138,6 +139,7 @@ class tank_game():
         self.queue_tetris = queue_tetris #Default queue style
         self.positive_haunts = positive_haunts #Haunts give AP
         self.version = 2                 #1 = post-time-delta, 2 = post-queue
+        self.background = None
 
     def save_state(self):
         return json.dumps({
@@ -158,6 +160,7 @@ class tank_game():
             "density": self.density,
             "queue_tetris": self.queue_tetris,
             "positive_haunts": self.positive_haunts,
+            "background": self.background,
             })
 
     def load_state(self, loadstring):
@@ -190,6 +193,11 @@ class tank_game():
             self.density = data["density"]
             self.queue_tetris = data["queue_tetris"]
             self.positive_haunts = data["positive_haunts"]
+
+        try:
+            self.background = data["background"]
+        except KeyError:
+            self.background = None
 
     def save_state_to_file(self, file):
         """
@@ -228,13 +236,20 @@ class tank_game():
 
     def requeue(self):
         """
-        If the player heart queue is used, reload it according to the queue style
+        If the player heart queue is used, reload the player heart according to the queue style
         """
+        #if not self.player_next_hearts:
         self.player_next_hearts = list(self.players.keys()) * self.queue_tetris
         random.shuffle(self.player_next_hearts)
 
     def active(self):
         return self.state == STATE_GAME
+
+    def finish(self):
+        self.state = STATE_OVER
+
+    def finished(self):
+        return self.state == STATE_OVER
 
     def selector_in_game(self, who_id, first_person=True):
         """
@@ -387,7 +402,7 @@ class tank_game():
         for i in range(heartcount):
             self.hearts.remove(playerpos)
 
-        return "Moved {}".format(direction)
+        return f"Moved {direction}"
 
     def push(self, who_id, target, direction):
         self.selector_in_game(who_id)
@@ -398,9 +413,9 @@ class tank_game():
         self.selector_range(who_id, target)
 
         self.players[who_id]["AP"] -= 1
-        move(self, target, direction, forced=True)
+        self.move(self, target, direction, forced=True)
 
-        return "Moved <@{}> {}".format(target, direction)
+        return f"Moved <@{target}> {direction}"
 
     def attack(self, who_id, target):
         self.selector_in_game(who_id)
@@ -421,9 +436,9 @@ class tank_game():
             ap = self.players[target]["AP"]
             self.players[who_id]["AP"] += self.players[target]["AP"] # give all AP
             self.players[target]["AP"] = 0
-            return ("Killed <@{}>".format(target), "Stole {} AP.".format(ap))
+            return (f"Killed <@{target}>", f"Stole {ap} AP.")
         else:
-            return ("Attacked <@{}>".format(target),)
+            return (f"Attacked <@{target}>",)
 
     def giveAP(self, who_id, target):
         self.selector_in_game(who_id)
@@ -436,7 +451,7 @@ class tank_game():
 
         self.players[who_id]["AP"] -= 1
         self.players[target]["AP"] += 1
-        return "Gave 1 AP to <@{}>".format(target)
+        return f"Gave 1 AP to <@{target}>"
 
     def giveHP(self, who_id, target):
         self.selector_in_game(who_id)
@@ -447,7 +462,7 @@ class tank_game():
 
         self.players[who_id]["HP"] -= 1
         self.players[target]["HP"] += 1
-        return "Gave 1 HP to <@{}>".format(target)
+        return f"Gave 1 HP to <@{target}>"
 
     def heal(self, who_id):
         self.selector_in_game(who_id)
@@ -476,11 +491,11 @@ class tank_game():
         self.selector_alive(target, False)
 
         self.players[who_id]["haunting"] = target
-        return "Haunting <@{}>!".format(target)
+        return "Haunting <@{target}>!"
 
     def info(self, who_id):
         self.selector_in_game(who_id)
-        return "You have {} AP and {} range".format(self.players[who_id]["AP"], self.players[who_id]["range"])
+        return f'You have {self.players[who_id]["AP"]} AP and {self.players[who_id]["range"]} range'
 
     def skip_turn(self, who_id):
         if self.players[who_id]["skip_turn"]:
@@ -577,11 +592,18 @@ class tank_game():
         img = Image.new("RGB", (box_size_o*board_w+thickness-1, box_size_o*board_h+thickness-1), "white")
         pixels = img.load()
 
+        #background
+        if self.background:
+            background_img = Image.open(self.background, 'r')
+            img.paste(background_img)
+
+        #vertical grid
         for i in range(img.size[0]):
             for j in range(box_size_o-1, img.size[1], box_size_o):
                 for k in range(thickness):
                     pixels[i, j+k] = 0
 
+        #horizontal grid
         for i in range(box_size_o-1, img.size[0], box_size_o):
             for j in range(img.size[1]):
                 for k in range(thickness):
@@ -589,12 +611,12 @@ class tank_game():
 
         #name the top row
         for i in range(1, board_w):
-            subimg = Image.open("./static_images/top/{}x{}.png".format(i, box_size), 'r')
+            subimg = Image.open(f"./static_images/top/{i}x{box_size}.png", 'r')
             img.paste(subimg, (box_size_o*i+thickness-1, 0))
 
         #name the left coloum
         for i in range(1, board_h):
-            subimg = Image.open("./static_images/side/{}x{}.png".format(i, box_size), 'r')
+            subimg = Image.open(f"./static_images/side/{i}x{box_size}.png", 'r')
             #img.paste(subimg, (0, box_size_o*i+thickness-1))
             img.paste(subimg, (0, box_size_o*i+thickness-2))
 
@@ -604,7 +626,7 @@ class tank_game():
 
         #put players on the board
         for p,v in self.players.items():
-            player_img = Image.open("./dynamic_images/{}.png".format(p), 'r')
+            player_img = Image.open(f"./dynamic_images/{p}.png", 'r')
 
             if player_img.width > box_size:
                 #assume height==width, or have pain.
