@@ -413,7 +413,7 @@ class tank_game():
         self.selector_range(who_id, target)
 
         self.players[who_id]["AP"] -= 1
-        self.move(self, target, direction, forced=True)
+        self.move(target, direction, forced=True)
 
         return f"Moved <@{target}> {direction}"
 
