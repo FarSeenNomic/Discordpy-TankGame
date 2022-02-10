@@ -626,7 +626,10 @@ class tank_game():
 
         #put players on the board
         for p,v in self.players.items():
-            player_img = Image.open(f"./dynamic_images/{p}.png", 'r')
+            try:
+                player_img = Image.open(f"./dynamic_images/{p}.png", 'r')
+            except:
+                player_img = Image.open(f"./dynamic_images/809320471718789170.png", 'r')
 
             if player_img.width > box_size:
                 #assume height==width, or have pain.

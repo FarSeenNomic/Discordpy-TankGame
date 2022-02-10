@@ -207,12 +207,13 @@ async def call_member(channelID, haunted_player, game, playerid):
 
     # I think this fixes double giving hearts if I restart the code mid-giving out.
     # It will still leave a visual error if the board is not changed.
-    game.player_next_hearts.remove(playerid)
+    print(playerid, game.player_next_hearts)
+    #game.player_next_hearts.remove(playerid)
 
     try:
         if return_value == "dead":
             # People have requested they don't get messaged while dead.
-            #await member.dm_channel.send(f"Dead!\nGained 0 AP in <#{channelID}>\n{game.info(playerid)}")
+            # await member.dm_channel.send(f"Dead!\nGained 0 AP in <#{channelID}>\n{game.info(playerid)}")
             pass
         elif return_value == "haunted":
             # Get a list of every person haunting 'playerid' (That could be you!)
@@ -402,7 +403,7 @@ f'''Created a game
 With rounds every {leng1} {time1}
 Random offset of {leng2} {time2}
 Radius of {radius}
-Density of {density}
+Density of {density} ({4./density} times normal)
 Queue multiplier of {queue_tetris}```
 ''')
                     return
@@ -414,11 +415,11 @@ Queue multiplier of {queue_tetris}```
 
             game = games[message.channel.id]
 
-            await get_user_image(message.author)
+            #await get_user_image(message.author)
 
             if args[0].casefold() == ".join":
-                await message.channel.send(game.insert_player(message.author.id))
                 await get_user_image(message.author)
+                await message.channel.send(game.insert_player(message.author.id))
 
             elif args[0].casefold() == ".start":
                 await load_and_send_board(message, game, game.start_game(message.author.id))
