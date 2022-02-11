@@ -620,6 +620,13 @@ class tank_game():
             #img.paste(subimg, (0, box_size_o*i+thickness-1))
             img.paste(subimg, (0, box_size_o*i+thickness-2))
 
+        try:
+            #make the number in the corner the number of hours between rounds
+            subimg = Image.open(f"./static_images/side/{self.time_gap.seconds//3600}x{box_size}.png", 'r')
+            img.paste(subimg, (0, 0))
+        except Exception as e:
+            print(e)
+
         #preload the heart, as to not be loading it 30+ times
         heart = Image.open("./static_images/heart.png", 'r')
         width = 10
