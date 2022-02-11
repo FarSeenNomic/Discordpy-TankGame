@@ -432,7 +432,7 @@ Queue multiplier of {queue_tetris}```
 
             elif args[0].casefold() == ".push":
                 if len(args) == 3:
-                    await message.channel.send(game.move(message.author.id, mention_to_id(args[1]), args[2]))
+                    await message.channel.send(game.push(message.author.id, mention_to_id(args[1]), args[2]))
                 else:
                     await message.channel.send(".push <@player> <direction>")
 
