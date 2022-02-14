@@ -626,7 +626,7 @@ class tank_game():
 
         try:
             #make the number in the corner the number of hours between rounds
-            subimg = Image.open(f"./static_images/side/{self.time_gap.seconds//3600}x{box_size}.png", 'r')
+            subimg = Image.open(f"./static_images/side/{self.time_gap.total_seconds()//3600}x{box_size}.png", 'r')
             img.paste(subimg, (0, 0))
         except Exception as e:
             print(e)
@@ -675,17 +675,23 @@ class tank_game():
         img.save(fname)
 
 if __name__ == '__main__':
-    game = tank_game(269904594526666754)
-    game.insert_player(269904594526666754)
-    game.insert_player(619671441805279252)
-    game.start_game(269904594526666754)
+    #game = tank_game(269904594526666754)
+    #game.insert_player(269904594526666754)
+    #game.insert_player(619671441805279252)
+    #game.start_game(269904594526666754)
 
     #print(1, game.hearts)
     #game.give_hourly_AP_onbeat()
     #print(2, game.hearts)
 
-    game.display(box_size=64, thickness=2)
+    #game.display(box_size=64, thickness=2)
     #for i in range(2, 10):
     #    print(i, "players:", playercount_to_size(i)[0], "x", playercount_to_size(i)[1])
 
     #print(datetime.datetime.now().strftime())
+
+    game = tank_game()
+    game.load_state_from_file("D:/Documents/python/tank2/saves/927360967212421181.JSON")
+    print(game.time_gap)
+    print(game.time_gap.total_seconds())
+    game.display(box_size=64, thickness=2)
