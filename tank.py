@@ -626,7 +626,7 @@ class tank_game():
 
         try:
             #make the number in the corner the number of hours between rounds
-            subimg = Image.open(f"./static_images/side/{self.time_gap.total_seconds()//3600}x{box_size}.png", 'r')
+            subimg = Image.open(f"./static_images/side/{round(self.time_gap.total_seconds())//3600}x{box_size}.png", 'r')
             img.paste(subimg, (0, 0))
         except Exception as e:
             print(e)
