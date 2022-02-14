@@ -1,0 +1,1 @@
+Delete all text in this file, and insert your discord bot token

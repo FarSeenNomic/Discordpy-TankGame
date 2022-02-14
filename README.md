@@ -5,7 +5,7 @@ discord.py
 Pillow
 
 To run:
-Modify the bottom of main.py to have your token, or point to a file containing your token, then run with `python main.py`
+Modify bottoken.txt to contain your token or change the bottom of main.py. Then, run the bot with `python main.py`
 
 Based on the instructions written in
 "The Game Prototype That Had to Be Banned by Its Own Studio"
