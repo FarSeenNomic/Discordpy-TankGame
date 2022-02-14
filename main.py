@@ -536,4 +536,4 @@ Queue multiplier of {queue_tetris}```
             print(e)
 
 #points to a file containing only the bot token.
-client.run(open("bottoken.txt", "r").read().rstrip())
+client.run(open("TOKEN", "r").read().rstrip())
