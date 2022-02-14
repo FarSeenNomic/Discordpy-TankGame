@@ -229,8 +229,8 @@ class tank_game():
             y = 26
             x = 15 * pc / 26
 
-        if x > 26:  #height is limited by the amount of assets I rendered
-            x = 26
+        if x > 32:  #height is limited by the amount of numeric assets I rendered
+            x = 32
 
         return [x, y]
 
@@ -491,7 +491,7 @@ class tank_game():
         self.selector_alive(target, False)
 
         self.players[who_id]["haunting"] = target
-        return "Haunting <@{target}>!"
+        return f"Haunting <@{target}>!"
 
     def info(self, who_id):
         self.selector_in_game(who_id)
@@ -582,6 +582,10 @@ class tank_game():
         Sends a grid of players to the channel.
         """
         #avatar_url_as(format="PNG", static_format='PNG', box_size_o=32)
+
+        start = datetime.datetime.now()
+        def time():
+            print((datetime.datetime.now()-start).total_seconds()*1000,"MS")
 
         box_size_o = box_size + thickness
         board_w,board_h = self.board_size

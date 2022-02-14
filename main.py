@@ -415,8 +415,6 @@ Queue multiplier of {queue_tetris}```
 
             game = games[message.channel.id]
 
-            #await get_user_image(message.author)
-
             if args[0].casefold() == ".join":
                 await get_user_image(message.author)
                 await message.channel.send(game.insert_player(message.author.id))
@@ -501,6 +499,7 @@ Queue multiplier of {queue_tetris}```
                 await message.channel.send("DMd AP and Range")
 
             elif args[0].casefold() == ".board":
+                await get_user_image(message.author)
                 #get PFPs and display board
                 if game.active():
                     await load_and_send_board(message, game)
