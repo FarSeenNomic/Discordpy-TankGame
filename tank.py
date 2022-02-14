@@ -4,7 +4,7 @@ import json
 import math
 import random
 
-from PIL import Image   #pip install pillow
+from PIL import Image, ImageDraw   #pip install pillow
 
 STATE_PREGAME = 0
 STATE_GAME = 1
@@ -577,7 +577,7 @@ class tank_game():
     def get_all_players(self):
         return list(self.players.keys())
 
-    def display(self, fname="./maps/out.png", *, box_size=32, thickness=1):
+    def display(self, fname="./maps/out.png", *, who_id=None, box_size=32, thickness=1):
         """
         Sends a grid of players to the channel.
         """
@@ -594,6 +594,7 @@ class tank_game():
         board_w += 1
 
         img = Image.new("RGB", (box_size_o*board_w+thickness-1, box_size_o*board_h+thickness-1), "white")
+        draw = ImageDraw.Draw(img)
         pixels = img.load()
 
         #background
@@ -671,6 +672,20 @@ class tank_game():
                 int((x+1)*box_size_o + box_size/2 - width/2),
                 int((y+1)*box_size_o + box_size/2 - width/2)
                 ), mask=heart)
+
+        #indicate the player's range
+        if who_id in self.players: #if player who called .board is playing
+            p = self.players[who_id] #get their player
+            bounds = { #get boundaries of player's range
+                "left": max(p["X"] - p["range"], 0),
+                "top": max(p["Y"] - p["range"], 0),
+                "right": min(p["X"] + 1 + p["range"], self.board_size[0]),
+                "bottom": min(p["Y"] + 1 + p["range"], self.board_size[1])
+            }
+            for i in bounds: #for each boundary
+                bounds[i] = (bounds[i]+1)*box_size_o #convert board co-ordinate to image co-ordinate
+            draw.rectangle([(bounds["left"], bounds["top"]), (bounds["right"], bounds["bottom"])], None, "#ff2e2e", thickness+1) #draw range rectangle
+
 
         img.save(fname)
 

@@ -270,7 +270,7 @@ async def get_user_image(user):
     await url.save(f"./dynamic_images/{user.id}.png")
 
 async def load_and_send_board(message, game, content=None):
-    game.display(f"./maps/{message.channel.id}.png", box_size=board_size, thickness=2)
+    game.display(f"./maps/{message.channel.id}.png", who_id=message.author.id, box_size=board_size, thickness=2)
     await message.channel.send(content, file=discord.File(f"./maps/{message.channel.id}.png"))
 
 @client.event
