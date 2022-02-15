@@ -693,7 +693,6 @@ class tank_game():
 
         img.save(fname)
 
-
 if __name__ == '__main__':
     #game = tank_game(269904594526666754)
     #game.insert_player(269904594526666754)
