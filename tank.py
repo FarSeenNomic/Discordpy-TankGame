@@ -46,7 +46,7 @@ def has_transparency(img):
 
 def distance(player1, player2):
     """
-    returns the manhattan distance between two players
+    returns the Chebyshev distance between two players
     """
     return max(
         player1["X"]-player2["X"], player2["X"]-player1["X"],
