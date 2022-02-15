@@ -577,7 +577,7 @@ class tank_game():
     def get_all_players(self):
         return list(self.players.keys())
 
-    def display(self, fname="./maps/out.png", *, box_size=32, thickness=1):
+    def display(self, fname="./maps/out.png", *, who_id=None, show_range=False, box_size=32, thickness=1):
         """
         Sends a grid of players to the channel.
         """
@@ -593,7 +593,7 @@ class tank_game():
         board_h += 1
         board_w += 1
 
-        img = Image.new("RGB", (box_size_o*board_w+thickness-1, box_size_o*board_h+thickness-1), "white")
+        img = Image.new("RGB", (box_size_o*board_w, box_size_o*board_h), "white")
         pixels = img.load()
 
         #background
@@ -603,12 +603,12 @@ class tank_game():
 
         #vertical grid
         for i in range(img.size[0]):
-            for j in range(box_size_o-1, img.size[1], box_size_o):
+            for j in range(box_size_o-thickness, img.size[1], box_size_o):
                 for k in range(thickness):
                     pixels[i, j+k] = 0
 
         #horizontal grid
-        for i in range(box_size_o-1, img.size[0], box_size_o):
+        for i in range(box_size_o-thickness, img.size[0], box_size_o):
             for j in range(img.size[1]):
                 for k in range(thickness):
                     pixels[i+k, j] = 0
@@ -616,13 +616,13 @@ class tank_game():
         #name the top row
         for i in range(1, board_w):
             subimg = Image.open(f"./static_images/top/{i}x{box_size}.png", 'r')
-            img.paste(subimg, (box_size_o*i+thickness-1, 0))
+            img.paste(subimg, (box_size_o*i, 0))
 
         #name the left coloum
         for i in range(1, board_h):
             subimg = Image.open(f"./static_images/side/{i}x{box_size}.png", 'r')
             #img.paste(subimg, (0, box_size_o*i+thickness-1))
-            img.paste(subimg, (0, box_size_o*i+thickness-2))
+            img.paste(subimg, (0, box_size_o*i))
 
         try:
             #make the number in the corner the number of hours between rounds
@@ -649,8 +649,8 @@ class tank_game():
                 multiple = box_size // player_img.width
                 player_img = player_img.resize( (multiple*player_img.height, multiple*player_img.width), Image.NEAREST)
 
-            p1 = box_size_o*(v["X"]+1)+thickness-1 + (box_size-player_img.width ) // 2
-            p2 = box_size_o*(v["Y"]+1)+thickness-1 + (box_size-player_img.height) // 2
+            p1 = box_size_o*(v["X"]+1) + (box_size-player_img.width ) // 2
+            p2 = box_size_o*(v["Y"]+1) + (box_size-player_img.height) // 2
             if has_transparency(player_img):
                 img.paste(player_img, (p1,p2), mask=player_img)
             else:
@@ -672,7 +672,27 @@ class tank_game():
                 int((y+1)*box_size_o + box_size/2 - width/2)
                 ), mask=heart)
 
+        if show_range and who_id in self.players:
+            p = self.players[who_id] #get their player
+            p1X = box_size_o * max(p["X"] - p["range"] + 1, 1) #left line
+            p1Y = box_size_o * max(p["Y"] - p["range"] + 1, 1) #top line
+            p2X = box_size_o * min(p["X"] + p["range"] + 2, board_w) #right line
+            p2Y = box_size_o * min(p["Y"] + p["range"] + 2, board_h) #bottom line
+
+            #line left
+            for i in [p1X, p2X]:
+                for j in range(p1Y-thickness, p2Y): #minus thickness as the lines overlap below
+                    for k in range(thickness):
+                        pixels[i-k-1, j] = 0x2E2EFF
+
+            #line top
+            for i in range(p1X, p2X):
+                for j in [p1Y, p2Y]:
+                    for k in range(thickness):
+                        pixels[i, j-k-1] = 0x2E2EFF
+
         img.save(fname)
+
 
 if __name__ == '__main__':
     #game = tank_game(269904594526666754)
@@ -691,7 +711,9 @@ if __name__ == '__main__':
     #print(datetime.datetime.now().strftime())
 
     game = tank_game()
-    game.load_state_from_file("D:/Documents/python/tank2/saves/927360967212421181.JSON")
-    print(game.time_gap)
-    print(game.time_gap.total_seconds())
-    game.display(box_size=64, thickness=2)
+    game.load_state_from_file("D:/Documents/python/tank2/saves/870761768509640765.JSON")
+
+    game.players[269904594526666754]["X"] += 10
+    game.players[269904594526666754]["Y"] += 8
+
+    game.display(box_size=64, thickness=4, who_id=269904594526666754, show_range=True)
