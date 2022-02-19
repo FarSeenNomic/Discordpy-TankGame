@@ -69,6 +69,9 @@ Returns the player at the position 'position'
 .board
 view the board
 
+.board -r
+view the board with your range highlighted.
+
 .DELETE
 Case sensitive
 Stops and removes the current game running. Can only be used by the person who started the game or a server admin.
@@ -530,10 +533,16 @@ Queue multiplier of {queue_tetris}```
                 game.save_state_to_file(f"./saves/{message.channel.id}.JSON")
 
         except tank.GameError as e:
-            await message.channel.send(str(e) or "Unknown Error :(")
+            try:
+                await message.channel.send(str(e) or "Unknown Error :(")
+            except discord.errors.Forbidden as e:
+                pass
         except discord.errors.Forbidden as e:
-            await message.channel.send("Error: Not enough permissions (Does someone have their DMs blocked?)")
-            print(e)
+            try:
+                print(e)
+                await message.channel.send("Error: Not enough permissions (Does someone have their DMs blocked?)")
+            except discord.errors.Forbidden as e:
+                pass
 
 #points to a file containing only the bot token.
 client.run(open("TOKEN", "r").read().rstrip())
