@@ -485,18 +485,21 @@ class tank_game():
     def haunt(self, who_id, target):
         self.selector_in_game(who_id)
         if self.players[who_id]["HP"] != 0:
-            raise NotEnoughHealth("You are not dead enough to haunt!")
+            raise NotEnoughHealth(f"You are not dead enough to {'' if target else 'un'}haunt!")
 
-        if target == None:
-            self.players[who_id]["haunting"] = None
-            return "Stopped haunting.";
-
-        self.selector_in_game(target, False)
-        self.selector_not_self(who_id, target)
-        self.selector_alive(target, False)
-
-        self.players[who_id]["haunting"] = target
-        return f"Haunting <@{target}>!"
+        if target:
+            self.selector_in_game(target, False)
+            self.selector_not_self(who_id, target)
+            self.selector_alive(target, False)
+            self.players[who_id]["haunting"] = target
+            return f"Haunting <@{target}>!"
+        else:
+            if self.players[who_id]["haunting"]:
+                self.players[who_id]["haunting"] = None
+                return "Stopped haunting!"
+            else:
+                # If you want to unhaunt and you aren't haunting anyone.
+                return "You're not haunting anyone!"
 
     def info(self, who_id):
         self.selector_in_game(who_id)
