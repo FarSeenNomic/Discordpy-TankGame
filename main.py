@@ -45,6 +45,9 @@ pushes a targeted player
 .haunt <@player>
 If you are dead, mark a player for not getting AP
 
+.unhaunt
+Remove your haunt target
+
 .heal
 For 3 AP, heals you
 
@@ -478,6 +481,9 @@ Queue multiplier of {queue_tetris}```
                     await message.channel.send(game.haunt(message.author.id, mention_to_id(args[1])))
                 else:
                     await message.channel.send(".haunt <player>")
+
+            elif args[0].casefold() == ".unhaunt":
+                await message.channel.send(game.haunt(message.author.id, None))
 
             elif args[0].casefold() == ".heal":
                 await message.channel.send(game.heal(message.author.id))
