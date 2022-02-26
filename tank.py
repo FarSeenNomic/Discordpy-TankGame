@@ -192,6 +192,14 @@ class tank_game():
             self.radius = data["radius"]
             self.density = data["density"]
             self.queue_tetris = data["queue_tetris"]
+
+            if len(self.player_next_hearts) >= 1:
+                if type(self.player_next_hearts[0]) is int:
+                    print("reset old state")
+                    self.player_next_hearts = []
+                else:
+                    print(type(self.player_next_hearts[0]))
+
             self.positive_haunts = data["positive_haunts"]
 
         try:
@@ -233,14 +241,6 @@ class tank_game():
             x = 32
 
         return [x, y]
-
-    def requeue(self):
-        """
-        If the player heart queue is used, reload the player heart according to the queue style
-        """
-        #if not self.player_next_hearts:
-        self.player_next_hearts = list(self.players.keys()) * self.queue_tetris
-        random.shuffle(self.player_next_hearts)
 
     def active(self):
         return self.state == STATE_GAME
@@ -531,6 +531,8 @@ class tank_game():
         if self.active() and self.next_time < datetime.datetime.now():
             return True
         if self.active() and self.skip_on_0 and all(v["skip_turn"] or v["AP"] == 0 or v["HP"] == 0 for p, v in self.players.items()):
+            for player in self.players:
+                self.players[player]["skip_turn"] = False
             self.next_time = datetime.datetime.now()
             return True
         return False
@@ -570,6 +572,14 @@ class tank_game():
         self.players[player]["AP"] += 1
         self.players[player]["skip_turn"] = False
         return "+"
+
+    def requeue(self):
+        """
+        Updates the player heart getting queue to hold when all the peoples are getting hearts.
+
+        If the player heart queue is used, reload the player heart according to the queue style
+        """
+        self.player_next_hearts += [[p, random.random() * self.time_delta.total_seconds()] for p in self.players for _ in range(self.queue_tetris)]
 
     def dead_game(self):
         return len(self.hearts) > 5*len(self.players)
@@ -712,7 +722,6 @@ if __name__ == '__main__':
     game = tank_game()
     game.load_state_from_file("D:/Documents/python/tank2/saves/870761768509640765.JSON")
 
-    game.players[269904594526666754]["X"] += 10
-    game.players[269904594526666754]["Y"] += 8
-
-    game.display(box_size=64, thickness=4, who_id=269904594526666754, show_range=True)
+    #game.players[269904594526666754]["X"] += 10
+    #game.players[269904594526666754]["Y"] += 8
+    #game.display(box_size=64, thickness=4, who_id=269904594526666754, show_range=True)

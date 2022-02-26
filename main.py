@@ -165,14 +165,18 @@ def multiliststr(items):
 check_index = 0
 async def day_loop():
     """
-    Check if the time has passed on a game to give it more AP
+    Check if the time has passed on a game to give it more AP.
 
-    I'll be honest, this entire section has becomes a mess.
+    player_next_hearts starts at empty, and requeue() appends every player, living or dead, and a time offset for them to get
+    hearts. It is done this way so that it can be loaded with the same player more than once, and so restarting the code will
+    not double give or skip giving players AP.
+
+    I think it's been cleaned up a good amount.
     """
     global games
     global check_index
     while True:
-        await asyncio.sleep(3) #don't check faster than every 10 seconds
+        await asyncio.sleep(3) #don't check faster than every 3 seconds
         check_index = (check_index + 1) % len(games)
         channelID, game = list(games.items())[check_index]
 
@@ -185,33 +189,30 @@ async def day_loop():
             haunted_player = game.haunted_player()
 
             print("time", datetime.now(), channelID, haunted_player)
-            if game.time_delta.total_seconds() < 10:
-                for playerid in game.get_all_players():
-                    await call_member(channelID, haunted_player, game, playerid)
-            else:
-                #Someone must instantly gain AP, or else the loop will see all players with 0 AP and repeatedly call.
-                game.requeue()
-                timedelta = 0
-                for playerid in game.player_next_hearts:
-                    client.loop.call_later(timedelta, asyncio.create_task, call_member(channelID, haunted_player, game, playerid))
-                    timedelta = random.random() * game.time_delta.total_seconds()
+            game.requeue()
+            print("requeue", game.player_next_hearts)
+            for playerid, timedelta in game.player_next_hearts:
+                client.loop.call_later(timedelta, asyncio.create_task, call_member(channelID, haunted_player, game, playerid, timedelta))
 
-async def call_member(channelID, haunted_player, game, playerid):
+async def call_member(channelID, haunted_player, game, playerid, timedelta):
     if game.finished():
         return
 
+    print([playerid, timedelta] in game.player_next_hearts, [playerid, timedelta], game.player_next_hearts)
+    if [playerid, timedelta] in game.player_next_hearts:
+        #should always be true.
+        game.player_next_hearts.remove( [playerid, timedelta] )
+    else:
+        return
+
+    return_value = game.give_hourly_AP_offbeat(playerid, haunted_player)
+
+    # tell humans what is happening
     member = client.get_user(playerid)
     if not member: # if player has left the game
         return
     if member.dm_channel is None: # If there is no DM channel, make one.
-        await member.create_dm()  # Does this do anything, or is it placebo?
-
-    return_value = game.give_hourly_AP_offbeat(playerid, haunted_player)
-
-    # I think this fixes double giving hearts if I restart the code mid-giving out.
-    # It will still leave a visual error if the board is not changed.
-    print(playerid, game.player_next_hearts)
-    #game.player_next_hearts.remove(playerid)
+        await member.create_dm()
 
     try:
         if return_value == "dead":
