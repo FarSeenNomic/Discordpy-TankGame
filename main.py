@@ -6,10 +6,11 @@ import re
 import random
 import functools
 
-import discord  #pip install discord.py
-                #which has been depricated with no replacement as of now...
-                #this makes me sad.
+import discord 
+
+from client import client
 import tank
+from fn import multiliststr, call_member, mention_to_id, get_user_image, load_and_send_board, namer
 
 """
 Todo:
@@ -67,13 +68,12 @@ list players currently in the game
 Returns the player at the position 'position'
 
 .whereis <@player>
-Returns the player at the position 'position'
+Returns the position of mentioned player
 
-.board
-view the board
-
-.board -r
-view the board with your range highlighted.
+.board [-r] [-n]
+View the board
+If "-r" is specified, your range will be highlighted
+If "-n" is specified, players' names will be written on the board
 
 .DELETE
 Case sensitive
@@ -150,20 +150,8 @@ ADDITIONAL NOTES
 #assert(len(help_message_main) < 2000)
 #assert(len(help_message_instructions) < 2000)
 
-me_st = discord.Game("battles! ⚔")
-intents = discord.Intents.default()
-intents.members = True
-client = discord.Client(intents=intents, activity=me_st)
-games = {}
 
-def multiliststr(items):
-    if len(items) == 0:
-        return ""
-    if len(items) == 1:
-        return items[0]
-    if len(items) == 2:
-        return items[0] + " and " + items[1]
-    return ", ".join(items[:~0]) + " and " + items[~0]
+games = {}
 
 check_index = 0
 async def day_loop():
@@ -197,55 +185,6 @@ async def day_loop():
             for playerid, timedelta in game.player_next_hearts:
                 client.loop.call_later(timedelta, asyncio.create_task, call_member(channelID, haunted_player, game, playerid, timedelta))
 
-async def call_member(channelID, haunted_player, game, playerid, timedelta):
-    if game.finished():
-        return
-
-    print([playerid, timedelta] in game.player_next_hearts, [playerid, timedelta], game.player_next_hearts)
-    if [playerid, timedelta] in game.player_next_hearts:
-        #should always be true.
-        game.player_next_hearts.remove( [playerid, timedelta] )
-    else:
-        return
-
-    return_value = game.give_hourly_AP_offbeat(playerid, haunted_player)
-
-    # tell humans what is happening
-    member = client.get_user(playerid)
-    if not member: # if player has left the game
-        return
-    if member.dm_channel is None: # If there is no DM channel, make one.
-        await member.create_dm()
-
-    try:
-        if return_value == "dead":
-            # People have requested they don't get messaged while dead.
-            # await member.dm_channel.send(f"Dead!\nGained 0 AP in <#{channelID}>\n{game.info(playerid)}")
-            pass
-        elif return_value == "haunted":
-            # Get a list of every person haunting 'playerid' (That could be you!)
-            hauntlist = []
-            for index, player in game.players.items():
-                if player["haunting"] == playerid:
-                    hauntlist.append(namer(client.get_channel(channelID).guild, index))
-            await member.dm_channel.send(f"Haunted by {multiliststr(hauntlist)}!\nGained 0 AP in <#{channelID}>\n{game.info(playerid)}")
-        elif return_value == "+":
-            await member.dm_channel.send(f"Gained 1 AP in <#{channelID}>\n{game.info(playerid)}")
-
-        else:
-            print("Something went wrong:", return_value)
-
-    except discord.errors.Forbidden:
-        print(f"Disabled DMs: {namer(client.get_channel(channelID).guild, playerid)} ({playerid})")
-
-def mention_to_id(m):
-    if m.startswith("<@!"):
-        return int(m[3:-1])
-    elif m.startswith("<@"):
-        return int(m[2:-1])
-    else:
-        return int(m)
-
 loop = True
 @client.event
 async def on_ready():
@@ -269,17 +208,6 @@ async def on_ready():
                 # Ignore and continue chugging.
             #    print("You should fix:", e)
 
-#The width in pixels of any user's image
-board_size = 64
-
-async def get_user_image(user):
-    url = user.avatar_url_as(format="png", static_format='png')
-    await url.save(f"./dynamic_images/{user.id}.png")
-
-async def load_and_send_board(message, game, content=None, *, show_range=False):
-    game.display(f"./maps/{message.channel.id}.png", who_id=message.author.id, show_range=show_range, box_size=board_size, thickness=2)
-    await message.channel.send(content, file=discord.File(f"./maps/{message.channel.id}.png"))
-
 @client.event
 async def on_guild_channel_delete(channel):
     try:
@@ -287,20 +215,6 @@ async def on_guild_channel_delete(channel):
         delete_file(f"./saves/{channel.id}.JSON")
     except KeyError:
         pass
-
-def namer(guild, p):
-    """
-    Takes a member.id p and returns a string of their display name, if it exists.
-    Else return something.
-    """
-    #return (message.guild.get_member(p) or message.guild.get_member(809942527724486727)).display_name.replace("@", "@.")
-    if not p:
-        # if p is None or otherwise false-y, it should not be stringified
-        return "Nobody"
-    elif guild.get_member(p):
-        return guild.get_member(p).display_name.replace("@", "@.")
-    else:
-        return f"{p} (<@{p}>)"
 
 @client.event
 async def on_message(message):
@@ -512,7 +426,7 @@ Queue multiplier of {queue_tetris}```
                 await get_user_image(message.author)
                 #get PFPs and display board
                 if game.active():
-                    await load_and_send_board(message, game, show_range="-r" in message.content)
+                    await load_and_send_board(message, game, show_range="-r" in message.content, show_names="-n" in message.content)
                 else:
                     await message.channel.send("Game not running yet.")
 

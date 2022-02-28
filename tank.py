@@ -4,7 +4,9 @@ import json
 import math
 import random
 
-from PIL import Image   #pip install pillow
+from PIL import Image, ImageDraw, ImageFont   #pip install pillow
+
+from fn import namer
 
 STATE_PREGAME = 0
 STATE_GAME = 1
@@ -595,7 +597,7 @@ class tank_game():
     def get_all_players(self):
         return list(self.players.keys())
 
-    def display(self, fname="./maps/out.png", *, who_id=None, show_range=False, box_size=32, thickness=1):
+    def display(self, fname="./maps/out.png", *, guild=None, who_id=None, show_range=False, show_names=False, box_size=32, thickness=1):
         """
         Sends a grid of players to the channel.
         """
@@ -612,6 +614,7 @@ class tank_game():
         board_w += 1
 
         img = Image.new("RGB", (box_size_o*board_w, box_size_o*board_h), "white")
+        draw = ImageDraw.Draw(img)
         pixels = img.load()
 
         #background
@@ -673,6 +676,26 @@ class tank_game():
                 img.paste(player_img, (p1,p2), mask=player_img)
             else:
                 img.paste(player_img, (p1,p2))
+            
+            #write names of players
+            if guild != None and show_names:
+                name = namer(guild, p)
+                size = draw.textsize(name)
+                scale = min(box_size / size[0], box_size / size[1]) #get the biggest text scale which can fit within a single grid box
+                size = tuple([i * scale for i in size])
+                font_size = round(size[1])
+                font = ImageFont.truetype('comic.ttf', size=font_size)
+                draw.text(
+                    (
+                        p1+box_size_o/2 - size[0]/2,
+                        p2+box_size_o/2 - size[1]
+                    ),
+                    name,
+                    font=font,
+                    fill="black",
+                    stroke_width=2,
+                    stroke_fill="white",
+                )
 
             #Also display health
             #Displays in a straight line.
