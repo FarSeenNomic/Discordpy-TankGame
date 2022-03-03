@@ -10,7 +10,7 @@ import discord
 
 from client import client
 import tank
-from common import multiliststr, call_member, mention_to_id, get_user_image, load_and_send_board, namer
+from common import call_member, mention_to_id, get_user_image, load_and_send_board, namer
 
 """
 Todo:
@@ -192,12 +192,12 @@ async def on_ready():
     global loop
     if loop:
         loop = False
-        for fn in listdir("./saves"):
-            if fn.endswith(".JSON"):
-                print("loaded", fn)
+        for filename in listdir("./saves"):
+            if filename.endswith(".JSON"):
+                print("loaded", filename)
                 game = tank.tank_game()
-                game.load_state_from_file(f"./saves/{fn}")
-                games[int(fn[:-5])] = game
+                game.load_state_from_file(f"./saves/{filename}")
+                games[int(filename[:-5])] = game
 
         print("ready.")
         while True:
@@ -441,28 +441,25 @@ Queue multiplier of {queue_tetris}```
 
             if game.active() and not game.is_playable():
                 game.finish()
-                for p in game.get_all_players():
-                    if game.players[p]["HP"] >= 1:
-                        await message.channel.send(f"The game is over! <@{p}> is the winner!")
+                for player in game.get_all_players():
+                    if game.players[player]["HP"] >= 1:
+                        await message.channel.send(f"The game is over! <@{player}> is the winner!")
                         break
                 delete_file(f"./saves/{message.channel.id}.JSON")
                 games.pop(message.channel.id)
             else:
-
-                #TODO: check if statemtnt is correct
-
                 game.save_state_to_file(f"./saves/{message.channel.id}.JSON")
 
         except tank.GameError as e:
             try:
                 await message.channel.send(str(e) or "Unknown Error :(")
-            except discord.errors.Forbidden as e:
+            except discord.errors.Forbidden:
                 pass
         except discord.errors.Forbidden as e:
             try:
                 print(e)
                 await message.channel.send("Error: Not enough permissions (Does someone have their DMs blocked?)")
-            except discord.errors.Forbidden as e:
+            except discord.errors.Forbidden:
                 pass
 
 if __name__ == '__main__':
