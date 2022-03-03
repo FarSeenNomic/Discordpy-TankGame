@@ -6,7 +6,7 @@ import random
 
 from PIL import Image, ImageDraw, ImageFont   #pip install pillow
 
-from fn import namer
+from common import namer
 
 STATE_PREGAME = 0
 STATE_GAME = 1
@@ -684,7 +684,7 @@ class tank_game():
                 scale = min(box_size / size[0], box_size / size[1]) #get the biggest text scale which can fit within a single grid box
                 size = tuple([i * scale for i in size])
                 font_size = round(size[1])
-                font = ImageFont.truetype('comic.ttf', size=font_size)
+                font = ImageFont.truetype('./static_images/comic.ttf', size=font_size)
                 draw.text(
                     (
                         p1+box_size_o/2 - size[0]/2,

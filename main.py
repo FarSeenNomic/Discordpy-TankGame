@@ -10,7 +10,7 @@ import discord
 
 from client import client
 import tank
-from fn import multiliststr, call_member, mention_to_id, get_user_image, load_and_send_board, namer
+from common import multiliststr, call_member, mention_to_id, get_user_image, load_and_send_board, namer
 
 """
 Todo:
@@ -465,5 +465,6 @@ Queue multiplier of {queue_tetris}```
             except discord.errors.Forbidden as e:
                 pass
 
-#points to a file containing only the bot token.
-client.run(open("TOKEN", "r").read().rstrip())
+if __name__ == '__main__':
+    #points to a file containing only the bot token.
+    client.run(open("TOKEN", "r").read().rstrip())
