@@ -310,23 +310,16 @@ async def on_message(message):
                         queue_tetris = int(regex_test.group(1))
                         g_args["queue_tetris"] = queue_tetris
 
-                    games[message.channel.id] = tank.tank_game(message.author.id, **g_args)
+                    game = tank.tank_game(message.author.id, **g_args)
+                    games[message.channel.id] = game
 
                     # and also join the user to the created game
-                    games[message.channel.id].insert_player(message.author.id)
+                    game.insert_player(message.author.id)
                     await get_user_image(message.author)
 
-                    games[message.channel.id].save_state_to_file(f"./saves/{message.channel.id}.JSON")
+                    game.save_state_to_file(f"./saves/{message.channel.id}.JSON")
 
-                    await message.channel.send(
-f'''Created a game
-```Auto-skip turned {"on" if g_args.get("skip_on_0", False) else "off"}
-With rounds every {leng1} {time1}
-Random offset of {leng2} {time2}
-Radius of {radius}
-Density of {density} ({4./density} times normal)
-Queue multiplier of {queue_tetris}```
-''')
+                    await message.channel.send(f'Created a game{game.game_info()}')
                     return
 
             if message.channel.id not in games:
@@ -421,6 +414,9 @@ Queue multiplier of {queue_tetris}```
                     await message.author.create_dm()
                 await message.author.dm_channel.send(f"{game.info(message.author.id)} in <#{message.channel.id}>")
                 await message.channel.send("DMd AP and Range")
+
+            elif args[0].casefold() == ".gameinfo":
+                await message.channel.send(game.game_info())
 
             elif args[0].casefold() == ".board":
                 await get_user_image(message.author)

@@ -6,7 +6,7 @@ import random
 
 from PIL import Image, ImageDraw, ImageFont   #pip install pillow
 
-from common import namer
+from common import namer, time_as_words
 
 STATE_PREGAME = 0
 STATE_GAME = 1
@@ -596,6 +596,15 @@ class tank_game():
 
     def get_all_players(self):
         return list(self.players.keys())
+    
+    def game_info(self):
+        return f'''
+```Auto-skip turned {"on" if self.skip_on_0 else "off"}
+Rounds every {time_as_words(self.time_gap)}
+Random offset of {time_as_words(self.time_delta)}
+Radius of {self.radius}
+Density of {self.density} ({4./self.density} times normal)
+Queue multiplier of {self.queue_tetris}```'''
 
     def display(self, fname="./maps/out.png", *, guild=None, who_id=None, show_range=False, show_names=False, box_size=32, thickness=1):
         """

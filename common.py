@@ -83,3 +83,15 @@ def namer(guild, p):
         return guild.get_member(p).display_name.replace("@", "@.")
     else:
         return f"{p} (<@{p}>)"
+
+def time_as_words(time):
+    seconds = time.total_seconds()
+    h = seconds // 3600
+    m = (seconds // 60) % 60
+    s = seconds % 60
+    text = []
+    for i in range(3):
+        n = round([h,m,s][i])
+        if n > 0 or (i == 2 and len(text) == 0):
+            text.append(f"{str(n)} {(['hour', 'minute', 'second'][i])}{'s' if n != 1 else ''}")
+    return ", ".join(text)
