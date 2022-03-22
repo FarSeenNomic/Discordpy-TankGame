@@ -67,8 +67,8 @@ async def get_user_image(user):
     await url.save(f"./dynamic_images/{user.id}.png")
 
 async def load_and_send_board(message, game, content=None, *, show_range=False, show_names=False):
-    game.display(f"./maps/{message.channel.id}.png", guild=message.guild, who_id=message.author.id, show_range=show_range, show_names=show_names, box_size=board_size, thickness=2)
-    await message.channel.send(content, file=discord.File(f"./maps/{message.channel.id}.png"))
+    game.display(f"./maps/{game.id}.png", guild=message.guild, who_id=message.author.id, show_range=show_range, show_names=show_names, box_size=board_size, thickness=2)
+    await message.channel.send(content, file=discord.File(f"./maps/{game.id}.png"))
 
 def namer(guild, p):
     """
