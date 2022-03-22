@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
-from os import listdir
+from os import listdir, exists
 from os import remove as delete_file
+import json
 import asyncio
 import re
 import random
@@ -152,6 +153,13 @@ ADDITIONAL NOTES
 
 
 games = {}
+users = {}
+
+def save_users():
+    global users
+    usersfile = open('./users.py', 'w')
+    usersfile.write(json.dumps(users))
+    usersfile.close()
 
 check_index = 0
 async def day_loop():
@@ -189,7 +197,16 @@ loop = True
 @client.event
 async def on_ready():
     global games
+    global users
     global loop
+
+    if exists('./users.py'):
+        usersfile = open('./users.py', 'r')
+        users = json.loads(usersfile.read())
+        usersfile.close()
+    else:
+        save_users()
+
     if loop:
         loop = False
         for filename in listdir("./saves"):

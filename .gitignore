@@ -1,4 +1,5 @@
 __pycache__
+users.json
 saves/*.JSON
 maps/*.png
 dynamic_images/*.png
