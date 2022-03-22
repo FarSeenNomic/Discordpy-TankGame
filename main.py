@@ -265,7 +265,9 @@ async def on_message(message):
 
         try:
             if args[0].casefold() == ".create":
-                if message.channel.id in games:
+                if message.channel.type == discord.ChannelType.private:
+                    await message.channel.send("Cannot create a game in DMs")
+                elif message.channel.id in games:
                     await message.channel.send("Game already exists")
                 else:
                     """
