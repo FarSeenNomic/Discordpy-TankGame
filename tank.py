@@ -373,7 +373,7 @@ class tank_game():
         """
         self.selector_in_game(who_id)
         p = self.players[who_id]
-        return chr(p["X"]+ord('A')) + str(p["Y"]+1)
+        return f"{chr(p['X']+ord('A'))}{str(p['Y']+1)}"
 
     def move(self, who_id, direction, *, forced=False):
         self.selector_in_game(who_id)
@@ -687,24 +687,28 @@ Queue multiplier of {self.queue_tetris}```'''
                 img.paste(player_img, (p1,p2))
             
             #write names of players
-            if guild != None and show_names:
-                name = namer(guild, p)
-                size = draw.textsize(name)
-                scale = min(box_size / size[0], box_size / size[1]) #get the biggest text scale which can fit within a single grid box
-                size = tuple([i * scale for i in size])
-                font_size = round(size[1])
-                font = ImageFont.truetype('./static_images/comic.ttf', size=font_size)
-                draw.text(
-                    (
-                        p1+box_size_o/2 - size[0]/2,
-                        p2+box_size_o/2 - size[1]
-                    ),
-                    name,
-                    font=font,
-                    fill="black",
-                    stroke_width=2,
-                    stroke_fill="white",
-                )
+            try:
+                if guild != None and show_names:
+                    name = namer(guild, p)
+                    size = draw.textsize(name)
+                    scale = min(box_size / size[0], box_size / size[1]) #get the biggest text scale which can fit within a single grid box
+                    size = tuple([i * scale for i in size])
+                    font_size = round(size[1])
+                    font = ImageFont.truetype('./static_images/comic.ttf', size=font_size)
+                    draw.text(
+                        (
+                            p1+box_size_o/2 - size[0]/2,
+                            p2+box_size_o/2 - size[1]
+                        ),
+                        name,
+                        font=font,
+                        fill="black",
+                        stroke_width=2,
+                        stroke_fill="white",
+                    )
+            except UnicodeEncodeError:
+                pass
+                # unicode names don't render.
 
             #Also display health
             #Displays in a straight line.
