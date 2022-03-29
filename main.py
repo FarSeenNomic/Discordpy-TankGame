@@ -294,7 +294,7 @@ async def on_message(message):
                     game.load_state_from_file(f"./saves/{gameId}.JSON")
                     games[gameId] = game
                 except FileNotFoundError:
-                    pass
+                    game = None
 
         elif message.channel.type == discord.ChannelType.private:
             if str(message.author.id) in users:
@@ -353,13 +353,11 @@ async def on_message(message):
                             queue_tetris = int(regex_test.group(1))
                             g_args["queue_tetris"] = queue_tetris
 
-                        g_args["id"] = message.author.id
-
                         game = tank.tank_game(message.author.id, **g_args)
                         games[message.channel.id] = game
 
                         # and also join the user to the created game
-                        game.insert_player(message.author.id)
+                        game.insert_player(message.author.id, gameId, users)
                         await get_user_image(message.author)
 
                         game.save_state_to_file(f"./saves/{message.channel.id}.JSON")
@@ -403,7 +401,8 @@ async def on_message(message):
 
             if args[0].casefold() == ".join":
                 await get_user_image(message.author)
-                await message.channel.send(game.insert_player(message.author.id))
+                await message.channel.send(game.insert_player(message.author.id, gameId, users))
+                save_users()
 
             elif args[0].casefold() == ".start":
                 if message.channel.type == discord.ChannelType.private:

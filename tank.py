@@ -295,7 +295,7 @@ class tank_game():
         if who_id == target:
             raise NotEnoughHealth("You can't target yourself!")
 
-    def insert_player(self, who_id):
+    def insert_player(self, who_id, gameId, users):
         """
         Adds a player to the game.
         """
@@ -308,6 +308,9 @@ class tank_game():
             raise GameJoinError("Game already started")
 
         self.players[who_id] = {"HP": 3, "range": self.radius, "X": 0, "Y": 0, "AP": 0, "haunting": None, "skip_turn": False}
+        if not str(who_id) in users:
+            users[str(who_id)] = {}
+        users[str(who_id)]["selected"] = gameId
         return "You joined the game!"
 
     def start_game(self, who_id):
