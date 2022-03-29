@@ -284,22 +284,24 @@ async def on_message(message):
         game = None
 
         if message.channel.type  == discord.ChannelType.text:
-            if message.channel.id in games:
-                game = games[message.channel.id]
+            gameId = message.channel.id
+            if gameId in games:
+                game = games[gameId]
             else:
                 #try loading the game from file if it already exists
                 try:
                     game = tank.tank_game()
-                    game.load_state_from_file(f"./saves/{message.channel.id}.JSON")
-                    games[message.channel.id] = game
+                    game.load_state_from_file(f"./saves/{gameId}.JSON")
+                    games[gameId] = game
                 except FileNotFoundError:
                     pass
 
         elif message.channel.type == discord.ChannelType.private:
             if str(message.author.id) in users:
                 user = users[str(message.author.id)]
-                if user["selected"] in games:
-                    game = games[user["selected"]]
+                gameId = user["selected"]
+                if gameId in games:
+                    game = games[gameId]
 
         try:
             if args[0].casefold() == ".create":
@@ -407,7 +409,7 @@ async def on_message(message):
                 if message.channel.type == discord.ChannelType.private:
                     await message.channel.send("Cannot use this in a DM")
                 else:
-                    await load_and_send_board(message, game, game.start_game(message.author.id))
+                    await load_and_send_board(message, gameId, game, game.start_game(message.author.id))
 
             elif args[0].casefold() == ".move":
                 if message.channel.type == discord.ChannelType.private:
@@ -519,7 +521,7 @@ async def on_message(message):
             elif args[0].casefold() == ".info":
                 if message.author.dm_channel is None:
                     await message.author.create_dm()
-                await message.author.dm_channel.send(f"{game.info(message.author.id)} in <#{game.id}>")
+                await message.author.dm_channel.send(f"{game.info(message.author.id)} in <#{gameId}>")
                 if message.channel.type != discord.ChannelType.private:
                     await message.channel.send("DMd AP and Range")
 
@@ -529,15 +531,17 @@ async def on_message(message):
             elif args[0].casefold() == ".board":
                 await get_user_image(message.author)
                 #get PFPs and display board
+                print(game)
+                print(gameId)
                 if game.active():
-                    await load_and_send_board(message, game, show_range="-r" in message.content, show_names="-n" in message.content)
+                    await load_and_send_board(message, gameId, game, show_range="-r" in message.content, show_names="-n" in message.content)
                 else:
                     await message.channel.send("Game not running yet.")
 
             elif args[0] == ".DELETE":
                 if game.owner == message.author.id or message.author.guild_permissions.administrator:
-                    games.pop(game.id)
-                    delete_file(f"./saves/{game.id}.JSON")
+                    games.pop(gameId)
+                    delete_file(f"./saves/{gameId}.JSON")
                     await message.channel.send("Game has been deleted successfully.")
                 else:
                     await message.channel.send("Not game owner.")
@@ -550,13 +554,13 @@ async def on_message(message):
                         await message.channel.send(f"The game is over! <@{player}> is the winner!")
                         break
                 for user in users:
-                    if user["selected"] == game.id:
+                    if user["selected"] == gameId:
                         user["selected"] = None
                 save_users()
-                delete_file(f"./saves/{game.id}.JSON")
-                games.pop(game.id)
+                delete_file(f"./saves/{gameId}.JSON")
+                games.pop(gameId)
             else:
-                game.save_state_to_file(f"./saves/{game.id}.JSON")
+                game.save_state_to_file(f"./saves/{gameId}.JSON")
 
         except tank.GameError as e:
             try:

@@ -127,7 +127,6 @@ class tank_game():
         queue_tetris = 1,
         positive_haunts = True
         ):#
-        self.id = None                   #channel id
         self.players = {}                #who is in the game
         self.state = STATE_PREGAME       #loading the players up
         self.board_size = [1,1]          #remember board size
@@ -147,7 +146,6 @@ class tank_game():
 
     def save_state(self):
         return json.dumps({
-            "id": self.id,
             "state": self.state,
             "board_size": self.board_size,
             "owner": self.owner,
@@ -180,10 +178,6 @@ class tank_game():
             self.version = data["version"]
         except KeyError:
             self.version = 0
-        try:
-            self.id = data["id"]
-        except:
-            pass
 
         self.players = {}
         for id_p, val in data["players"].items():
@@ -229,8 +223,6 @@ class tank_game():
         """
         with open(file, 'r') as f:
             self.load_state(f.read())
-            if self.id == None:
-                self.id = re.findall(r'\d+', file)[0]
 
     def playercount_to_size(self, pc, density=4):
         """
