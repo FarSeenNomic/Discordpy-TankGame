@@ -245,7 +245,7 @@ def get_game(message, target=None):
     game_id = None
     game_count = 0
     for gid, g in games.items():
-        if message.author.id in game.get_all_players():
+        if message.author.id in g.get_all_players():
             game_id = gid
             game = g
             game_count += 1
@@ -253,7 +253,7 @@ def get_game(message, target=None):
     if game_count == 0:
         return ("You are not in a game.",)
     if game_count >= 2:
-        return ("You are in more than 1 game! please use `.select` to specify which one you are in.",)
+        return ("You are in more than 1 game! please use `.selectgame` to specify which one you are in.",)
 
     return (game, game_id)
 
@@ -313,18 +313,18 @@ async def on_message(message):
                 except FileNotFoundError:
                     game = None
 
-        elif private_channel:
+        elif private_channel and args[0] != ".selectgame":
             if message.author.id in users:
                 user = users[message.author.id]
                 game_id = user["selected"]
                 if game_id in games:
                     game = games[game_id]
-                else:
-                    game = get_game(message)
-                    if len(message) == 1:
-                        await message.channel.send(game)
-                        return
-                    game, game_id = game
+            else:
+                game = get_game(message)
+                if len(game) == 1:
+                    await message.channel.send(game[0])
+                    return
+                game, game_id = game
 
         try:
             if args[0].casefold() == ".create":
