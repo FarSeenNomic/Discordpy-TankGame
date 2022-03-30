@@ -5,10 +5,8 @@ from os import remove as delete_file
 import json
 import asyncio
 import re
-import random
-import functools
 
-import discord 
+import discord
 
 from client import client
 import tank
@@ -19,11 +17,10 @@ Todo:
 Make haunting have setting for giving hearts instead of negating them.
 Make setting for threshold haunts instead of most haunts
 
-can time_delta be bigger than time_gap now?
-That'd be neat
+mention_to_id takes in channel so that it can detect 'bad pings'
 """
 
-help_message_game = """```
+HELP_MESSAGE_GAME = """```
 .help game
 Displays this message
 
@@ -86,7 +83,7 @@ Stops and removes the current game running. Can only be used by the person who s
 There is no warning.
 ```"""
 
-help_message_main = """```
+HELP_MESSAGE_MAIN = """```
 .help
 Displays this message
 
@@ -134,7 +131,7 @@ Joins a game before it starts.
 Shows the help messgae for in-game commands
 ```"""
 
-help_message_instructions = """```
+HELP_MESSAGE_INSTRUCTIONS = """```
 TRUE COMBAT
 Survive to the end!
 
@@ -157,16 +154,15 @@ ADDITIONAL NOTES
 * Action points are secret! Probably a good idea to try and hide how many you have.
 * You can't win this game without making some friends and stabbing some backs. Probably.```"""
 
-#assert(len(help_message_game) < 2000)
-#assert(len(help_message_main) < 2000)
-#assert(len(help_message_instructions) < 2000)
+#assert(len(HELP_MESSAGE_GAME) < 2000)
+#assert(len(HELP_MESSAGE_MAIN) < 2000)
+#assert(len(HELP_MESSAGE_INSTRUCTIONS) < 2000)
 
 
 games = {}
 users = {}
 
 def save_users():
-    global users
     usersfile = open('./users.json', 'w')
     usersfile.write(json.dumps(users))
     usersfile.close()
@@ -212,7 +208,9 @@ async def on_ready():
 
     if exists('./users.json'):
         usersfile = open('./users.json', 'r')
-        users = json.loads(usersfile.read())
+        users_str = json.loads(usersfile.read())
+        for id_str, val in users_str.items():
+            users[int(id_str)] = val
         usersfile.close()
     else:
         save_users()
@@ -228,12 +226,7 @@ async def on_ready():
 
         print("ready.")
         while True:
-            #try:
             await day_loop()
-            #except Exception as e:
-                # can have some random errors
-                # Ignore and continue chugging.
-            #    print("You should fix:", e)
 
 @client.event
 async def on_guild_channel_delete(channel):
@@ -243,10 +236,34 @@ async def on_guild_channel_delete(channel):
     except KeyError:
         pass
 
+def get_game(message, target=None):
+    """
+    gets game if user is in 1.
+    Target to help with if giving AP?
+    """
+    game = None
+    game_id = None
+    game_count = 0
+    for gid, g in games.items():
+        if message.author.id in game.get_all_players():
+            game_id = gid
+            game = g
+            game_count += 1
+
+    if game_count == 0:
+        return ("You are not in a game.",)
+    if game_count >= 2:
+        return ("You are in more than 1 game! please use `.select` to specify which one you are in.",)
+
+    return (game, game_id)
+
 @client.event
 async def on_message(message):
     if message.author.bot:
         return
+
+    public_channel = message.channel.type == discord.ChannelType.text
+    private_channel = message.channel.type == discord.ChannelType.private
 
     args = message.content.split()
     if len(args) == 0:
@@ -254,25 +271,24 @@ async def on_message(message):
 
     if args[0].casefold() == ".help":
         if len(args) == 1:
-            await message.channel.send(help_message_main)
+            await message.channel.send(HELP_MESSAGE_MAIN)
         elif len(args) == 2 and args[1].casefold() == "game":
-            await message.channel.send(help_message_game)
+            await message.channel.send(HELP_MESSAGE_GAME)
         else:
             await message.channel.send("Unknown help")
         return
 
-        
     elif args[0].casefold() == ".invite":
         invite = await client.get_channel(870761497117196331).create_invite(max_age=10*60, unique=True, reason="Requested invite")
         print(f"User {message.author.name} ({message.author.id}) created invite {invite}")
-
         await message.channel.send(f"Invite the bot:\nhttps://discord.com/oauth2/authorize?client_id=809942527724486727&scope=bot&permissions=314432\nOr join the discord:\n{invite}")
         return
+
     elif args[0].casefold() == ".instructions":
         if message.author.dm_channel is None:
             await message.author.create_dm()
         try:
-            await message.author.dm_channel.send(help_message_instructions)
+            await message.author.dm_channel.send(HELP_MESSAGE_INSTRUCTIONS)
             await message.channel.send("DMd how to play")
         except discord.errors.Forbidden:
             await message.channel.send("Can't DM!")
@@ -282,117 +298,125 @@ async def on_message(message):
     #commands can't start with .., so "..." won't be counted as a valid command by accident.
     if args[0].startswith(".") and not args[0].startswith(".."):
         game = None
+        game_id = None
 
-        if message.channel.type  == discord.ChannelType.text:
-            gameId = message.channel.id
-            if gameId in games:
-                game = games[gameId]
+        if public_channel:
+            game_id = message.channel.id
+            if game_id in games:
+                game = games[game_id]
             else:
                 #try loading the game from file if it already exists
                 try:
                     game = tank.tank_game()
-                    game.load_state_from_file(f"./saves/{gameId}.JSON")
-                    games[gameId] = game
+                    game.load_state_from_file(f"./saves/{game_id}.JSON")
+                    games[game_id] = game
                 except FileNotFoundError:
                     game = None
 
-        elif message.channel.type == discord.ChannelType.private:
-            if str(message.author.id) in users:
-                user = users[str(message.author.id)]
-                gameId = user["selected"]
-                if gameId in games:
-                    game = games[gameId]
+        elif private_channel:
+            if message.author.id in users:
+                user = users[message.author.id]
+                game_id = user["selected"]
+                if game_id in games:
+                    game = games[game_id]
+                else:
+                    game = get_game(message)
+                    if len(message) == 1:
+                        await message.channel.send(game)
+                        return
+                    game, game_id = game
 
         try:
             if args[0].casefold() == ".create":
-                if game != None:
-                    await message.channel.send("Game already exists")
+                if private_channel:
+                    await message.channel.send("Cannot create a game here.")
+                elif game:
+                    await message.channel.send("Game already exists.")
                 else:
-                    if message.channel.type == discord.ChannelType.private:
-                        await message.channel.send("Cannot create a game in DMs")
-                    else:
-                        """
-                        if game has -s, set to skipmode
-                        if it has a time, then set that as the delta
-                        """
-                        g_args = {}
-                        if "-s" in message.content:
-                            g_args["skip_on_0"] = True
+                    """
+                    if game has -s, set to skipmode
+                    if it has a time, then set that as the delta
+                    """
+                    g_args = {}
+                    if "-s" in message.content:
+                        g_args["skip_on_0"] = True
 
-                        leng1 = 0
-                        time1 = "s"
-                        regex_test = re.search(r'-a ?(\d+)(h|m|s|H|M|S)', message.content)
-                        if regex_test:
-                            leng1 = int(regex_test.group(1))
-                            time1 = {"h":"hours", "m":"minutes", "s":"seconds"}[regex_test.group(2).lower()]
-                            g_args["time_gap"] = timedelta(**{time1: leng1})
-                        
-                        leng2 = 0
-                        time2 = "s"
-                        regex_test = re.search(r'-t ?(\d+)(h|m|s|H|M|S)', message.content)
-                        if regex_test:
-                            leng2 = int(regex_test.group(1))
-                            time2 = {"h":"hours", "m":"minutes", "s":"seconds"}[regex_test.group(2).lower()]
-                            g_args["time_delta"] = timedelta(**{time2: leng2})
-                        
-                        radius = 2
-                        regex_test = re.search(r'-r ?(\d+)', message.content)
-                        if regex_test:
-                            radius = int(regex_test.group(1))
-                            g_args["radius"] = radius
-                        
-                        density = 4
-                        regex_test = re.search(r'-d ?(\d+)', message.content)
-                        if regex_test:
-                            density = int(regex_test.group(1))
-                            g_args["density"] = density
-                        
-                        queue_tetris = 1
-                        regex_test = re.search(r'-q ?(\d+)', message.content)
-                        if regex_test:
-                            queue_tetris = int(regex_test.group(1))
-                            g_args["queue_tetris"] = queue_tetris
+                    leng1 = 0
+                    time1 = "s"
+                    regex_test = re.search(r'-a ?(\d+)(h|m|s|H|M|S)', message.content)
+                    if regex_test:
+                        leng1 = int(regex_test.group(1))
+                        time1 = {"h":"hours", "m":"minutes", "s":"seconds"}[regex_test.group(2).lower()]
+                        g_args["time_gap"] = timedelta(**{time1: leng1})
 
-                        game = tank.tank_game(message.author.id, **g_args)
-                        games[message.channel.id] = game
+                    leng2 = 0
+                    time2 = "s"
+                    regex_test = re.search(r'-t ?(\d+)(h|m|s|H|M|S)', message.content)
+                    if regex_test:
+                        leng2 = int(regex_test.group(1))
+                        time2 = {"h":"hours", "m":"minutes", "s":"seconds"}[regex_test.group(2).lower()]
+                        g_args["time_delta"] = timedelta(**{time2: leng2})
 
-                        # and also join the user to the created game
-                        game.insert_player(message.author.id, gameId, users)
-                        await get_user_image(message.author)
+                    radius = 2
+                    regex_test = re.search(r'-r ?(\d+)', message.content)
+                    if regex_test:
+                        radius = int(regex_test.group(1))
+                        g_args["radius"] = radius
 
-                        game.save_state_to_file(f"./saves/{message.channel.id}.JSON")
+                    density = 4
+                    regex_test = re.search(r'-d ?(\d+)', message.content)
+                    if regex_test:
+                        density = int(regex_test.group(1))
+                        g_args["density"] = density
 
-                        await message.channel.send(f'Created a game{game.game_info()}')
-                        return
+                    queue_tetris = 1
+                    regex_test = re.search(r'-q ?(\d+)', message.content)
+                    if regex_test:
+                        queue_tetris = int(regex_test.group(1))
+                        g_args["queue_tetris"] = queue_tetris
+
+                    game = tank.tank_game(message.author.id, **g_args)
+                    games[message.channel.id] = game
+
+                    # and also join the user to the created game
+                    game.insert_player(message.author.id)
+                    users[message.author.id] = {"selected": game_id}
+                    await get_user_image(message.author)
+
+                    game.save_state_to_file(f"./saves/{message.channel.id}.JSON")
+
+                    await message.channel.send(f'Created a game{game.game_info()}')
+                    return
 
             elif args[0].casefold() == ".selectgame":
-                if message.channel.type == discord.ChannelType.private:
-                    if str(message.author.id) not in users:
-                        users[str(message.author.id)] = {"selected": None}
-                    user = users[str(message.author.id)]
+                if private_channel:
+                    if message.author.id not in users:
+                        users[message.author.id] = {"selected": None}
+                    user = users[message.author.id]
 
-                    if len(args) > 1 and "choices" in user:
-                        if args[1].isdigit() and int(args[1]) > 0 and int(args[1]) <= len(user["choices"]):
-                            user["selected"] = user["choices"][int(args[1])-1]
-                            del user["choices"]
-                            save_users()
-                            await message.channel.send("Successfully selected game")
-                        else:
-                            await message.channel.send("Invalid choice")
-                    else:
+                    if len(args) == 1:
                         choices = []
-                        for k,v in games.items():
-                            if message.author.id in v.players:
+                        for k, v in games.items():
+                            if message.author.id in v.get_all_players():
                                 choices.append(k)
                         if len(choices) > 0:
                             user["choices"] = choices
                             await message.channel.send("Use `.selectgame <num>` to select one of the following games to use in DMs:\n\n"+"\n".join([f'{str(i+1)}) <#{str(choices[i])}>' for i in range(len(choices))]))
                         else:
                             await message.channel.send("You're not currently part of any games.")
-                return
 
-            if game == None:
-                if message.channel.type == discord.ChannelType.private:
+                    elif len(args) == 2 and "choices" in user:
+                        if args[1].isdigit() and 1 <= int(args[1]) <= len(user["choices"]):
+                            user["selected"] = user["choices"][int(args[1])-1]
+                            del user["choices"]
+                            save_users()
+                            await message.channel.send("Successfully selected game")
+                        else:
+                            await message.channel.send("Invalid choice")
+                    return
+
+            if game is None:
+                if private_channel:
                     await message.channel.send("No game selected. Use .selectgame to select a game to use in DMs")
                 else:
                     await message.channel.send("No game running")
@@ -401,17 +425,18 @@ async def on_message(message):
 
             if args[0].casefold() == ".join":
                 await get_user_image(message.author)
-                await message.channel.send(game.insert_player(message.author.id, gameId, users))
+                await message.channel.send(game.insert_player(message.author.id))
+                users[message.author.id] = {"selected": game_id}
                 save_users()
 
             elif args[0].casefold() == ".start":
-                if message.channel.type == discord.ChannelType.private:
+                if private_channel:
                     await message.channel.send("Cannot use this in a DM")
                 else:
-                    await load_and_send_board(message, gameId, game, game.start_game(message.author.id))
+                    await load_and_send_board(message, game_id, game, game.start_game(message.author.id))
 
             elif args[0].casefold() == ".move":
-                if message.channel.type == discord.ChannelType.private:
+                if private_channel:
                     await message.channel.send("Cannot use this in a DM")
                 elif len(args) == 2:
                     await message.channel.send(game.move(message.author.id, args[1]))
@@ -419,7 +444,7 @@ async def on_message(message):
                     await message.channel.send(".move <direction>")
 
             elif args[0].casefold() == ".push":
-                if message.channel.type == discord.ChannelType.private:
+                if private_channel:
                     await message.channel.send("Cannot use this in a DM")
                 elif len(args) == 3:
                     await message.channel.send(game.push(message.author.id, mention_to_id(args[1]), args[2]))
@@ -427,7 +452,7 @@ async def on_message(message):
                     await message.channel.send(".push <@player> <direction>")
 
             elif args[0].casefold() == ".whois":
-                if message.channel.type == discord.ChannelType.private:
+                if private_channel:
                     await message.channel.send("Cannot use this in a DM")
                 elif len(args) == 2:
                     await message.channel.send(namer(message.guild, game.who_is(args[1])))
@@ -441,7 +466,7 @@ async def on_message(message):
                     await message.channel.send(".whereis <@player>")
 
             elif args[0].casefold() == ".attack":
-                if message.channel.type == discord.ChannelType.private:
+                if private_channel:
                     await message.channel.send("Cannot use this in a DM")
                 elif len(args) == 2:
                     ret = game.attack(message.author.id, mention_to_id(args[1]))
@@ -451,54 +476,52 @@ async def on_message(message):
                         await message.author.dm_channel.send(ret[1])
                     await message.channel.send(ret[0])
                 else:
-                    await message.channel.send(".attack <player>")
+                    await message.channel.send(".attack <@player>")
 
             elif args[0].casefold() == ".giveap":
-                if message.channel.type != discord.ChannelType.private:
-                    await message.channel.send("Action points are private, so this should be used in a DM channel.")
-                elif len(args) == 2:
-                    target = None
-                    for user in client.users:
-                        if args[1] == f"{user.name}#{user.discriminator}":
-                            target = user
-                            break
-                    if target != None:
-                        await message.channel.send(await game.giveAP(message.author.id, target))
-                    else:
-                        await message.channel.send("Could not find that user.")
+                if len(args) == 2:
+                    target = mention_to_id(args[1], client.get_channel(game_id))
+                    target_user = client.get_user(target)
+                    ret = game.giveAP(message.author.id, target)
+
+                    if target_user.dm_channel is None:
+                        await target_user.create_dm()
+                    await target_user.dm_channel.send(ret[1])
+
+                    await message.channel.send(ret[0])
                 else:
                     await message.channel.send(".giveap <user#0000>")
 
             elif args[0].casefold() == ".givehp":
-                if message.channel.type == discord.ChannelType.private:
+                if private_channel:
                     await message.channel.send("Cannot use this in a DM")
                 elif len(args) == 2:
                     await message.channel.send(game.giveHP(message.author.id, mention_to_id(args[1])))
                 else:
-                    await message.channel.send(".givehp <player>")
+                    await message.channel.send(".givehp <@player>")
 
             elif args[0].casefold() == ".haunt":
-                if message.channel.type == discord.ChannelType.private:
+                if private_channel:
                     await message.channel.send("Cannot use this in a DM")
                 elif len(args) == 2:
                     await message.channel.send(game.haunt(message.author.id, mention_to_id(args[1])))
                 else:
-                    await message.channel.send(".haunt <player>")
+                    await message.channel.send(".haunt <@player>")
 
             elif args[0].casefold() == ".unhaunt":
-                if message.channel.type == discord.ChannelType.private:
+                if private_channel:
                     await message.channel.send("Cannot use this in a DM")
                 else:
                     await message.channel.send(game.haunt(message.author.id, None))
 
             elif args[0].casefold() == ".heal":
-                if message.channel.type == discord.ChannelType.private:
+                if private_channel:
                     await message.channel.send("Cannot use this in a DM")
                 else:
                     await message.channel.send(game.heal(message.author.id))
 
             elif args[0].casefold() == ".upgrade":
-                if message.channel.type == discord.ChannelType.private:
+                if private_channel:
                     await message.channel.send("Cannot use this in a DM")
                 else:
                     await message.channel.send(game.upgrade(message.author.id))
@@ -507,22 +530,22 @@ async def on_message(message):
                 await message.channel.send(game.skip_turn(message.author.id))
 
             elif args[0].casefold() == ".list":
-                if message.channel.type == discord.ChannelType.private:
+                if private_channel:
                     await message.channel.send("Cannot use this in a DM")
                 else:
-                    #ERROR: 2K character limit
+                    #TODO: 2K character limit better
                     plist = [namer(message.guild, p) + (f' (haunting {namer(message.guild, v["haunting"])})' if v["HP"] == 0 and v["haunting"] else "") for p,v in game.players.items()]
                     pre = f"{len(plist)} players in game:\n"
                     hp = game.haunted_player()
                     post = ("\n\nHaunted player: " + (namer(message.guild, hp) if hp else "Tied!")) if any(v["HP"] == 0 for v in game.players.values()) else ""
-                    await message.channel.send(pre + "\n".join(plist) + post)
+                    await message.channel.send((pre + "\n".join(plist) + post)[:1999])
 
             elif args[0].casefold() == ".info":
+                if public_channel:
+                    await message.channel.send("DMd AP and Range")
                 if message.author.dm_channel is None:
                     await message.author.create_dm()
-                await message.author.dm_channel.send(f"{game.info(message.author.id)} in <#{gameId}>")
-                if message.channel.type != discord.ChannelType.private:
-                    await message.channel.send("DMd AP and Range")
+                await message.author.dm_channel.send(f"{game.info(message.author.id)} in <#{game_id}>")
 
             elif args[0].casefold() == ".gameinfo":
                 await message.channel.send(game.game_info())
@@ -530,17 +553,15 @@ async def on_message(message):
             elif args[0].casefold() == ".board":
                 await get_user_image(message.author)
                 #get PFPs and display board
-                print(game)
-                print(gameId)
                 if game.active():
-                    await load_and_send_board(message, gameId, game, show_range="-r" in message.content, show_names="-n" in message.content)
+                    await load_and_send_board(message, game_id, game, show_range="-r" in message.content, show_names="-n" in message.content)
                 else:
                     await message.channel.send("Game not running yet.")
 
             elif args[0] == ".DELETE":
-                if game.owner == message.author.id or message.author.guild_permissions.administrator:
-                    games.pop(gameId)
-                    delete_file(f"./saves/{gameId}.JSON")
+                if public_channel and (game.owner == message.author.id or message.author.guild_permissions.administrator):
+                    games.pop(game_id)
+                    delete_file(f"./saves/{game_id}.JSON")
                     await message.channel.send("Game has been deleted successfully.")
                 else:
                     await message.channel.send("Not game owner.")
@@ -553,13 +574,13 @@ async def on_message(message):
                         await message.channel.send(f"The game is over! <@{player}> is the winner!")
                         break
                 for user in users:
-                    if user["selected"] == gameId:
+                    if user["selected"] == game_id:
                         user["selected"] = None
                 save_users()
-                delete_file(f"./saves/{gameId}.JSON")
-                games.pop(gameId)
+                delete_file(f"./saves/{game_id}.JSON")
+                games.pop(game_id)
             else:
-                game.save_state_to_file(f"./saves/{gameId}.JSON")
+                game.save_state_to_file(f"./saves/{game_id}.JSON")
 
         except tank.GameError as e:
             try:

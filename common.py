@@ -51,11 +51,25 @@ async def call_member(channelID, haunted_player, game, playerid, timedelta):
     except discord.errors.Forbidden:
         print(f"Disabled DMs: {namer(client.get_channel(channelID).guild, playerid)} ({playerid})")
 
-def mention_to_id(m):
+def mention_to_id(m, channel=None):
     if m.startswith("<@!"):
         return int(m[3:-1])
     elif m.startswith("<@"):
         return int(m[2:-1])
+    elif channel:
+        testname = m
+        if m.startswith("@"):
+            testname = m[1:]
+        target = None
+        for user in channel.guild.members:
+            if testname == f"{user.name}":
+                target = user.id
+                break
+            if testname == f"{user.name}#{user.discriminator}":
+                target = user.id
+                break
+        if target:
+            return target
     else:
         return int(m)
 
@@ -66,9 +80,9 @@ async def get_user_image(user):
     url = user.avatar_url_as(format="png", static_format='png')
     await url.save(f"./dynamic_images/{user.id}.png")
 
-async def load_and_send_board(message, gameId, game, content=None, *, show_range=False, show_names=False):
-    game.display(f"./maps/{gameId}.png", guild=message.guild, who_id=message.author.id, show_range=show_range, show_names=show_names, box_size=board_size, thickness=2)
-    await message.channel.send(content, file=discord.File(f"./maps/{gameId}.png"))
+async def load_and_send_board(message, game_id, game, content=None, *, show_range=False, show_names=False):
+    game.display(f"./maps/{game_id}.png", guild=message.guild, who_id=message.author.id, show_range=show_range, show_names=show_names, box_size=board_size, thickness=2)
+    await message.channel.send(content, file=discord.File(f"./maps/{game_id}.png"))
 
 def namer(guild, p):
     """

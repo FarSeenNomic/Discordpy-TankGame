@@ -3,7 +3,6 @@ import datetime
 import json
 import math
 import random
-import re
 
 from PIL import Image, ImageDraw, ImageFont   #pip install pillow
 
@@ -126,7 +125,7 @@ class tank_game():
         density = 2,
         queue_tetris = 1,
         positive_haunts = True
-        ):#
+        ):
         self.players = {}                #who is in the game
         self.state = STATE_PREGAME       #loading the players up
         self.board_size = [1,1]          #remember board size
@@ -295,7 +294,7 @@ class tank_game():
         if who_id == target:
             raise NotEnoughHealth("You can't target yourself!")
 
-    def insert_player(self, who_id, gameId, users):
+    def insert_player(self, who_id):
         """
         Adds a player to the game.
         """
@@ -308,9 +307,6 @@ class tank_game():
             raise GameJoinError("Game already started")
 
         self.players[who_id] = {"HP": 3, "range": self.radius, "X": 0, "Y": 0, "AP": 0, "haunting": None, "skip_turn": False}
-        if not str(who_id) in users:
-            users[str(who_id)] = {}
-        users[str(who_id)]["selected"] = gameId
         return "You joined the game!"
 
     def start_game(self, who_id):
@@ -446,19 +442,18 @@ class tank_game():
         else:
             return (f"Attacked <@{target}>",)
 
-    async def giveAP(self, who_id, target):
+    def giveAP(self, who_id, target):
         self.selector_in_game(who_id)
-        self.selector_in_game(target.id, False)
+        self.selector_in_game(target, False)
         self.selector_alive(who_id)
-        self.selector_alive(target.id, False)
+        self.selector_alive(target, False)
         self.selector_minimum_AP(who_id, 1)
-        self.selector_range(who_id, target.id)
-        self.selector_not_self(who_id, target.id)
+        self.selector_range(who_id, target)
+        self.selector_not_self(who_id, target)
 
         self.players[who_id]["AP"] -= 1
-        self.players[target.id]["AP"] += 1
-        await target.send(f"<@{who_id}> gave you 1 AP")
-        return f"Gave 1 AP to <@{target.id}>"
+        self.players[target]["AP"] += 1
+        return (f"Gave 1 AP to <@{target}>", f"<@{who_id}> gave you 1 AP")
 
     def giveHP(self, who_id, target):
         self.selector_in_game(who_id)
