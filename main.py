@@ -546,23 +546,25 @@ async def on_message(message):
                         show_dead = True
                         selector_word = ""
                     elif show_living:
-                        selector_word = "dead "
-                    elif show_dead:
                         selector_word = "living "
+                    elif show_dead:
+                        selector_word = "dead "
 
                     pcount = 0
                     plist = ""
                     for p,v in game.players.items():
                         if (show_living and v["HP"] > 0) or (show_dead and v["HP"] == 0):
+                            pcount += 1
                             plist += namer(message.guild, p)
                             if v["HP"] == 0 and v["haunting"]:
                                 plist += f' (haunting {namer(message.guild, v["haunting"])})'
+                            plist += "\n"
 
                     pre = f"{pcount} {selector_word}players in game:\n"
 
                     hp = game.haunted_player()
                     if any(v["HP"] == 0 and v["haunting"] for v in game.players.values()):
-                        post = "\n\nHaunted player: "
+                        post = "\nHaunted player: "
                         if hp:
                             post += namer(message.guild, hp)
                         else:
