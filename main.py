@@ -60,8 +60,10 @@ DMs game info, currently just your AP and range
 .skip
 If skip mode is enabled, marks you for skipping your turn if you still have AP.
 
-.list
+.list [-l] [-d]
 list players currently in the game
+-l shows only living players
+-d shows only dead players
 
 .gameinfo
 Sends game info (like round time)
@@ -533,12 +535,41 @@ async def on_message(message):
                 if private_channel:
                     await message.channel.send("Cannot use this in a DM")
                 else:
-                    #TODO: 2K character limit better
-                    plist = [namer(message.guild, p) + (f' (haunting {namer(message.guild, v["haunting"])})' if v["HP"] == 0 and v["haunting"] else "") for p,v in game.players.items()]
-                    pre = f"{len(plist)} players in game:\n"
+                    #TODO: 2K character limit better =~ 25 players worst case, 50-60 normal case
+                    show_living = "-l" in message.content
+                    show_dead = "-d" in message.content
+                    if show_living and show_dead:
+                        selector_word = ""
+                    elif not show_living and not show_dead:
+                        # if nothing is selected, show default of "both"
+                        show_living = True
+                        show_dead = True
+                        selector_word = ""
+                    elif show_living:
+                        selector_word = "dead "
+                    elif show_dead:
+                        selector_word = "living "
+
+                    pcount = 0
+                    plist = ""
+                    for p,v in game.players.items():
+                        if (show_living and v["HP"] > 0) or (show_dead and v["HP"] == 0):
+                            plist += namer(message.guild, p)
+                            if v["HP"] == 0 and v["haunting"]:
+                                plist += f' (haunting {namer(message.guild, v["haunting"])})'
+
+                    pre = f"{pcount} {selector_word}players in game:\n"
+
                     hp = game.haunted_player()
-                    post = ("\n\nHaunted player: " + (namer(message.guild, hp) if hp else "Tied!")) if any(v["HP"] == 0 for v in game.players.values()) else ""
-                    await message.channel.send((pre + "\n".join(plist) + post)[:1999])
+                    if any(v["HP"] == 0 and v["haunting"] for v in game.players.values()):
+                        post = "\n\nHaunted player: "
+                        if hp:
+                            post += namer(message.guild, hp)
+                        else:
+                            post += "Tied!"
+
+                    plist = plist[:1999-len(pre)-len(post)]
+                    await message.channel.send(pre + plist + post)
 
             elif args[0].casefold() == ".info":
                 if public_channel:
