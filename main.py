@@ -563,6 +563,7 @@ async def on_message(message):
                     pre = f"{pcount} {selector_word}players in game:\n"
 
                     hp = game.haunted_player()
+                    post = ""
                     if any(v["HP"] == 0 and v["haunting"] for v in game.players.values()):
                         post = "\nHaunted player: "
                         if hp:
@@ -606,10 +607,10 @@ async def on_message(message):
                     if game.players[player]["HP"] >= 1:
                         await message.channel.send(f"The game is over! <@{player}> is the winner!")
                         break
-                for user in users:
-                    if user["selected"] == game_id:
-                        user["selected"] = None
-                save_users()
+                #for user in users:
+                #    if user["selected"] == game_id:
+                #        user["selected"] = None
+                #save_users()
                 delete_file(f"./saves/{game_id}.JSON")
                 games.pop(game_id)
             else:
