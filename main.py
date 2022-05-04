@@ -345,18 +345,18 @@ async def on_message(message):
 
                     leng1 = 0
                     time1 = "s"
-                    regex_test = re.search(r'-a ?(\d+)(h|m|s|H|M|S)', message.content)
+                    regex_test = re.search(r'-a ?(\d+)(d|h|m|s|D|H|M|S)', message.content)
                     if regex_test:
                         leng1 = int(regex_test.group(1))
-                        time1 = {"h":"hours", "m":"minutes", "s":"seconds"}[regex_test.group(2).lower()]
+                        time1 = {"d":"days", "h":"hours", "m":"minutes", "s":"seconds"}[regex_test.group(2).lower()]
                         g_args["time_gap"] = timedelta(**{time1: leng1})
 
                     leng2 = 0
                     time2 = "s"
-                    regex_test = re.search(r'-t ?(\d+)(h|m|s|H|M|S)', message.content)
+                    regex_test = re.search(r'-t ?(\d+)(d|h|m|s|D|H|M|S)', message.content)
                     if regex_test:
                         leng2 = int(regex_test.group(1))
-                        time2 = {"h":"hours", "m":"minutes", "s":"seconds"}[regex_test.group(2).lower()]
+                        time2 = {"d":"days", "h":"hours", "m":"minutes", "s":"seconds"}[regex_test.group(2).lower()]
                         g_args["time_delta"] = timedelta(**{time2: leng2})
 
                     radius = 2
