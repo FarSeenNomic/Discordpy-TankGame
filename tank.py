@@ -515,7 +515,7 @@ class tank_game():
             return "Prepared to skip"
 
     def board_wipe_ready(self, who_id):
-        return self.players[who_id]["AP"] > max(self.board_size[0], self.board_size[1]) + sum(pl["HP"] for pl in self.players.values()):
+        return self.players[who_id]["AP"] > max(self.board_size[0], self.board_size[1]) + sum(pl["HP"] for pl in self.players.values())
 
     def haunted_player(self):
         """
