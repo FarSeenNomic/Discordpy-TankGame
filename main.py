@@ -104,9 +104,9 @@ If no games are running, make a new one
 if "-s" is specified, then when each player has 0 AP or has opped to skip, the remaining time will be fast-forwarded.
 time and unit are the length of the time between AP gains, if unspecified, 24hours is used
 
--a specifies how long a round should last
+-a specifies how long a round should last [default 1d]
 
--t Specifies how much time should seperate all the players's AP gains from the start of the round
+-t Specifies how much time should seperate all the players's AP gains from the start of the round [default 0d]
 
 -r sets the default radius of all spawning players [default 2]
 
@@ -435,7 +435,7 @@ async def on_message(message):
                 if private_channel:
                     await message.channel.send("Cannot use this in a DM")
                 else:
-                    await load_and_send_board(message, game_id, game, game.start_game(message.author.id))
+                    await load_and_send_board(message, game_id, game, game.start_game(message.author.id, message.author.guild_permissions.administrator))
 
             elif args[0].casefold() == ".move":
                 if private_channel:

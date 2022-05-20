@@ -309,10 +309,10 @@ class tank_game():
         self.players[who_id] = {"HP": 3, "range": self.radius, "X": 0, "Y": 0, "AP": 0, "haunting": None, "skip_turn": False}
         return "You joined the game!"
 
-    def start_game(self, who_id):
+    def start_game(self, who_id, bypass_owner=False):
         if self.state != STATE_PREGAME:
             raise GameJoinError("Game already started")
-        if who_id != self.owner:
+        if who_id != self.owner and not bypass_owner:
             raise GameJoinError("You are not allowed to start the game.")
         if len(self.players) < 2:
             raise GameJoinError("Not enough players to start the game (Min 2).")

@@ -1,7 +1,7 @@
 # Discordpy-TankGame
 
 Requires:
-discord.py
+pycord (Drop in replacement for discord.py)
 Pillow
 
 pip install Discordpy Pillow
