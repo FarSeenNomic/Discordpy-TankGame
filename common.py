@@ -77,8 +77,11 @@ def mention_to_id(m, channel=None):
 board_size = 64
 
 async def get_user_image(user):
-    url = user.avatar_url_as(format="png", static_format='png')
-    await url.save(f"./dynamic_images/{user.id}.png")
+    #url = user.avatar_url_as(format="png", static_format='png')
+    #await url.save(f"./dynamic_images/{user.id}.png")
+
+    #await user.display_avatar.with_static_format("png").to_file(f"./dynamic_images/{user.id}.png")
+    await user.display_avatar.with_static_format("png").save(f"./dynamic_images/{user.id}.png")
 
 async def load_and_send_board(message, game_id, game, content=None, *, show_range=False, show_names=False):
     game.display(f"./maps/{game_id}.png", guild=message.guild, who_id=message.author.id, show_range=show_range, show_names=show_names, box_size=board_size, thickness=2)
