@@ -309,6 +309,20 @@ class tank_game():
         self.players[who_id] = {"HP": 3, "range": self.radius, "X": 0, "Y": 0, "AP": 0, "haunting": None, "skip_turn": False}
         return "You joined the game!"
 
+    def remove_player(self, who_id):
+        """
+        Adds a player to the game.
+        """
+        if who_id not in self.players:
+            raise GameJoinError("Player not yet in game")
+
+        #don't add while the game is in progress
+        if self.state != STATE_PREGAME:
+            raise GameJoinError("Game already started")
+
+        self.players.pop(who_id)
+        return "You left the game!"
+
     def start_game(self, who_id, bypass_owner=False):
         if self.state != STATE_PREGAME:
             raise GameJoinError("Game already started")
@@ -442,18 +456,18 @@ class tank_game():
         else:
             return (f"Attacked <@{target}>",)
 
-    def giveAP(self, who_id, target):
+    def giveAP(self, who_id, target, amount=1):
         self.selector_in_game(who_id)
         self.selector_in_game(target, False)
         self.selector_alive(who_id)
         self.selector_alive(target, False)
-        self.selector_minimum_AP(who_id, 1)
+        self.selector_minimum_AP(who_id, amount)
         self.selector_range(who_id, target)
         self.selector_not_self(who_id, target)
 
-        self.players[who_id]["AP"] -= 1
-        self.players[target]["AP"] += 1
-        return (f"Gave 1 AP to <@{target}>", f"<@{who_id}> gave you 1 AP")
+        self.players[who_id]["AP"] -= amount
+        self.players[target]["AP"] += amount
+        return (f"Gave {amount} AP to <@{target}>", f"<@{who_id}> gave you {amount} AP")
 
     def giveHP(self, who_id, target):
         self.selector_in_game(who_id)

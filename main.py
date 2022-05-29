@@ -431,6 +431,9 @@ async def on_message(message):
                 users[message.author.id] = {"selected": game_id}
                 save_users()
 
+            if args[0].casefold() == ".leave":
+                await message.channel.send(game.remove_player(message.author.id))
+
             elif args[0].casefold() == ".start":
                 if private_channel:
                     await message.channel.send("Cannot use this in a DM")
@@ -485,6 +488,17 @@ async def on_message(message):
                     target = mention_to_id(args[1], client.get_channel(game_id))
                     target_user = client.get_user(target)
                     ret = game.giveAP(message.author.id, target)
+
+                    if target_user.dm_channel is None:
+                        await target_user.create_dm()
+                    await target_user.dm_channel.send(ret[1])
+
+                    await message.channel.send(ret[0])
+                elif len(args) == 3:
+                    target = mention_to_id(args[1], client.get_channel(game_id))
+                    target_user = client.get_user(target)
+                    amount = int(args[2])
+                    ret = game.giveAP(message.author.id, target, amount)
 
                     if target_user.dm_channel is None:
                         await target_user.create_dm()
