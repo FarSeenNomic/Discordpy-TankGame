@@ -645,7 +645,7 @@ async def on_message(message):
             except discord.errors.Forbidden:
                 if message.guild.owner.dm_channel is None:
                     await message.guild.owner.create_dm()
-                await message.guild.owner.dm_channel.send("Error: Not enough permissions. Did you remove my 'send messages' role?")
+                await message.guild.owner.dm_channel.send("Error: Not enough permissions. Did someone remove my 'send messages' role?")
 
 if __name__ == '__main__':
     #points to a file containing only the bot token.
