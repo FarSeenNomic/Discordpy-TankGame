@@ -120,6 +120,9 @@ time and unit are the length of the time between AP gains, if unspecified, 24hou
 .join
 Joins a game before it starts.
 
+.leave
+Leaves a game before it starts.
+
 .start
 (Game creator) Starts a game running
 
