@@ -362,6 +362,8 @@ class tank_game():
         """
         Takes an XY string (F8, A13) and returns the player who is there, else None
         """
+        if not self.active():
+            raise GameJoinError("Game not yet started")
 
         test_x = ord(xy[0].upper()) - ord('A')
 
@@ -385,11 +387,15 @@ class tank_game():
         """
         Takes an player, and returns their position
         """
+        if not self.active():
+            raise GameJoinError("Game not yet started")
         self.selector_in_game(who_id)
         p = self.players[who_id]
         return f"{chr(p['X']+ord('A'))}{str(p['Y']+1)}"
 
     def move(self, who_id, direction, *, forced=False):
+        if not self.active():
+            raise GameJoinError("Game not yet started")
         self.selector_in_game(who_id)
         if not forced:
             self.selector_alive(who_id)
@@ -421,6 +427,8 @@ class tank_game():
         return f"Moved {direction}"
 
     def push(self, who_id, target, direction):
+        if not self.active():
+            raise GameJoinError("Game not yet started")
         self.selector_in_game(who_id)
         self.selector_in_game(target, False)
         self.selector_alive(who_id)
@@ -434,6 +442,8 @@ class tank_game():
         return f"Moved <@{target}> {direction}"
 
     def attack(self, who_id, target):
+        if not self.active():
+            raise GameJoinError("Game not yet started")
         self.selector_in_game(who_id)
         self.selector_in_game(target, False)
         self.selector_alive(who_id)
@@ -457,6 +467,8 @@ class tank_game():
             return (f"Attacked <@{target}>",)
 
     def giveAP(self, who_id, target, amount=1):
+        if not self.active():
+            raise GameJoinError("Game not yet started")
         self.selector_in_game(who_id)
         self.selector_in_game(target, False)
         self.selector_alive(who_id)
@@ -470,6 +482,8 @@ class tank_game():
         return (f"Gave {amount} AP to <@{target}>", f"<@{who_id}> gave you {amount} AP")
 
     def giveHP(self, who_id, target):
+        if not self.active():
+            raise GameJoinError("Game not yet started")
         self.selector_in_game(who_id)
         self.selector_in_game(target, False)
         self.selector_alive(who_id)
@@ -481,6 +495,8 @@ class tank_game():
         return f"Gave 1 HP to <@{target}>"
 
     def heal(self, who_id):
+        if not self.active():
+            raise GameJoinError("Game not yet started")
         self.selector_in_game(who_id)
         self.selector_alive(who_id)
         self.selector_minimum_AP(who_id, 3)
@@ -490,6 +506,8 @@ class tank_game():
         return "Healed!"
 
     def upgrade(self, who_id):
+        if not self.active():
+            raise GameJoinError("Game not yet started")
         self.selector_in_game(who_id)
         self.selector_alive(who_id)
         self.selector_minimum_AP(who_id, 3)
@@ -499,6 +517,8 @@ class tank_game():
         return "Upgraded range!"
 
     def haunt(self, who_id, target):
+        if not self.active():
+            raise GameJoinError("Game not yet started")
         self.selector_in_game(who_id)
         if self.players[who_id]["HP"] != 0:
             raise NotEnoughHealth(f"You are not dead enough to {'' if target else 'un'}haunt!")
@@ -518,10 +538,14 @@ class tank_game():
                 return "You're not haunting anyone!"
 
     def info(self, who_id):
+        if not self.active():
+            raise GameJoinError("Game not yet started")
         self.selector_in_game(who_id)
         return f'You have {self.players[who_id]["AP"]} AP and {self.players[who_id]["range"]} range'
 
     def skip_turn(self, who_id):
+        if not self.active():
+            raise GameJoinError("Game not yet started")
         if self.players[who_id]["skip_turn"]:
             return "Already prepared to skip"
         else:
