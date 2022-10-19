@@ -60,10 +60,11 @@ DMs game info, currently just your AP and range
 .skip
 If skip mode is enabled, marks you for skipping your turn if you still have AP.
 
-.list [-l] [-d]
+.list [-l] [-d] [-hp]
 list players currently in the game
 -l shows only living players
 -d shows only dead players
+-hp shows players' HP
 
 .gameinfo
 Sends game info (like round time)
@@ -555,6 +556,7 @@ async def on_message(message):
                     #TODO: 2K character limit better =~ 25 players worst case, 50-60 normal case
                     show_living = "-l" in message.content
                     show_dead = "-d" in message.content
+                    show_hp = "-hp" in message.content
                     if show_living and show_dead:
                         selector_word = ""
                     elif not show_living and not show_dead:
@@ -573,7 +575,9 @@ async def on_message(message):
                         if (show_living and v["HP"] > 0) or (show_dead and v["HP"] == 0):
                             pcount += 1
                             plist += namer(message.guild, p)
-                            if v["HP"] == 0 and v["haunting"]:
+                            if show_hp:
+                                plist += f' (HP {v["HP"]})'
+                            elif v["HP"] == 0 and v["haunting"]:
                                 plist += f' (haunting {namer(message.guild, v["haunting"])})'
                             plist += "\n"
 
