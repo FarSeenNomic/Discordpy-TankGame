@@ -6,7 +6,7 @@ import random
 
 from PIL import Image, ImageDraw, ImageFont   #pip install pillow
 
-from common import namer, time_as_words
+from common import namer, time_as_words, textsize
 
 STATE_PREGAME = 0
 STATE_GAME = 1
@@ -731,21 +731,26 @@ Queue multiplier of {self.queue_tetris}```'''
             try:
                 if guild != None and show_names:
                     name = namer(guild, p)
-                    size = draw.textsize(name)
-                    scale = min(box_size / size[0], box_size / size[1]) #get the biggest text scale which can fit within a single grid box
-                    size = tuple([i * scale for i in size])
-                    font_size = round(size[1])
+                    tb_width, tb_height = textsize(name, ImageFont.truetype('./static_images/comic.ttf', size=box_size))
+                    # if width > 64 then it's too wide, so scale would be > 1
+                    # height will always be ~64
+                    scale = max(tb_width, tb_height) / box_size #get the biggest text scale which can fit within a single grid box
+                    tb_width /= scale
+                    tb_height /= scale
+                    font_size = round(tb_height)
+
                     font = ImageFont.truetype('./static_images/comic.ttf', size=font_size)
                     draw.text(
                         (
-                            p1+box_size_o/2 - size[0]/2,
-                            p2+box_size_o/2 - size[1]
+                            p1+box_size_o/2,
+                            p2+box_size_o/2
                         ),
                         name,
                         font=font,
                         fill="black",
                         stroke_width=2,
                         stroke_fill="white",
+                        anchor="ms",
                     )
             except UnicodeEncodeError:
                 pass

@@ -112,3 +112,13 @@ def time_as_words(time):
         if n > 0 or (i == 2 and len(text) == 0):
             text.append(f"{str(n)} {(['hour', 'minute', 'second'][i])}{'s' if n != 1 else ''}")
     return ", ".join(text)
+
+# https://stackoverflow.com/questions/77038132/python-pillow-pil-doesnt-recognize-the-attribute-textsize-of-the-object-imag
+# fix pillow deprication
+from PIL import Image, ImageDraw
+def textsize(text, font):
+    im = Image.new(mode="P", size=(0, 0))
+    draw = ImageDraw.Draw(im)
+    _, _, width, height = draw.textbbox((0, 0), text=text, font=font, anchor="lt")
+    return width, height
+
